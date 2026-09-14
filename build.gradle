@@ -73,7 +73,7 @@ tasks.jar {
 tasks.shadowJar {
 	archiveBaseName.set("abnw-launcher")
 	archiveClassifier.set("")
-	from("LICENSE", "THIRD-PARTY-NOTICES.md") {
+	from(files("LICENSE", "THIRD-PARTY-NOTICES.md")) {
 		into("META-INF/abnw-launcher")
 	}
 	manifest {
