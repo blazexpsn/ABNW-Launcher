@@ -1,0 +1,92 @@
+plugins {
+	id "application"
+	id "com.gradleup.shadow"
+}
+
+def launcher = new Properties()
+file("launcher.properties").withInputStream { launcher.load(it) }
+def prop = { String key ->
+	def value = launcher.getProperty(key)
+	if (value == null) {
+		throw new GradleException("launcher.properties is missing ${key}")
+	}
+	value.trim()
+}
+
+group = "org.teamzetaverse"
+version = prop("launcher_version")
+
+application {
+	mainClass = "org.teamzetaverse.launcher.LauncherMain"
+}
+
+java {
+	toolchain {
+		languageVersion.set(JavaLanguageVersion.of(prop("java_version") as int))
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+def imguiVersion = prop("imgui_version")
+def lwjglNatives = ["natives-windows", "natives-windows-arm64", "natives-linux", "natives-linux-arm64", "natives-macos", "natives-macos-arm64"]
+
+dependencies {
+	implementation "io.github.spair:imgui-java-binding:${imguiVersion}"
+	implementation "io.github.spair:imgui-java-lwjgl3:${imguiVersion}"
+	runtimeOnly "io.github.spair:imgui-java-natives-windows:${imguiVersion}"
+	runtimeOnly "io.github.spair:imgui-java-natives-linux:${imguiVersion}"
+	runtimeOnly "io.github.spair:imgui-java-natives-macos:${imguiVersion}"
+
+	implementation platform("org.lwjgl:lwjgl-bom:${prop("lwjgl_version")}")
+	["lwjgl", "lwjgl-glfw", "lwjgl-opengl", "lwjgl-stb", "lwjgl-tinyfd"].each { module ->
+		implementation "org.lwjgl:${module}"
+		lwjglNatives.each { natives -> runtimeOnly "org.lwjgl:${module}::${natives}" }
+	}
+
+	implementation "com.google.code.gson:gson:${prop("gson_version")}"
+	implementation "com.davidehrmann.vcdiff:vcdiff-core:${prop("vcdiff_version")}"
+	implementation "org.slf4j:slf4j-api:${prop("slf4j_version")}"
+	implementation "org.slf4j:slf4j-nop:${prop("slf4j_version")}"
+}
+
+def buildInfo = [
+		version    : version.toString(),
+		repository : prop("releases_repository"),
+		branch     : prop("releases_branch"),
+		msaClientId: prop("msa_client_id"),
+]
+
+tasks.processResources {
+	inputs.properties(buildInfo)
+	filesMatching("abnw-launcher.properties") {
+		expand(buildInfo)
+	}
+}
+
+tasks.jar {
+	enabled = false
+}
+
+tasks.shadowJar {
+	archiveBaseName.set("abnw-launcher")
+	archiveClassifier.set("")
+	from("LICENSE", "THIRD-PARTY-NOTICES.md") {
+		into("META-INF/abnw-launcher")
+	}
+	manifest {
+		attributes("Main-Class": application.mainClass.get(), "Implementation-Version": version.toString())
+	}
+}
+
+tasks.build {
+	dependsOn tasks.shadowJar
+}
+
+tasks.named("run", JavaExec) {
+	if (System.getProperty("os.name").toLowerCase().contains("mac")) {
+		jvmArgs("-XstartOnFirstThread")
+	}
+}

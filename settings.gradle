@@ -1,0 +1,14 @@
+pluginManagement {
+	def props = new Properties()
+	file("launcher.properties").withInputStream { props.load(it) }
+
+	repositories {
+		gradlePluginPortal()
+		mavenCentral()
+	}
+	plugins {
+		id "com.gradleup.shadow" version props.getProperty("shadow_version")
+	}
+}
+
+rootProject.name = "abnw-launcher"
