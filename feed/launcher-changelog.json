@@ -1,0 +1,18 @@
+{
+  "formatVersion": 1,
+  "entries": [
+    {
+      "version": "1.0.2",
+      "date": "2026-09-15",
+      "title": "Safer downloads and accounts",
+      "changes": [
+        "Every game file, library and patch is now checked against a SHA-1 or SHA-256 hash before it is used.",
+        "Sign-in tokens are kept in your system's secure storage instead of a plain file.",
+        "Cancelling an install now stops downloads straight away, and retries no longer overcount progress.",
+        "Custom Java paths are checked for the Java version the game needs.",
+        "Extra JVM arguments understand quotes, so paths with spaces work.",
+        "News and both changelogs now update from the web every time the launcher opens."
+      ]
+    }
+  ]
+}
