@@ -2,6 +2,15 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.5",
+      "date": "2026-09-15",
+      "title": "Cosmetics",
+      "changes": [
+        "New Cosmetics page: link your Patreon to unlock supporter cosmetics. Cosmetics are purely visual and never affect gameplay, and more is coming soon.",
+        "Linking is done in your browser through Patreon, and your Minecraft account is confirmed without sharing your sign-in."
+      ]
+    },
+    {
       "version": "1.0.4",
       "date": "2026-09-15",
       "title": "Library and platform fixes",
@@ -10,6 +19,16 @@
         "Cached files verified with SHA-256 are no longer re-downloaded on every launch.",
         "On macOS the launcher now starts correctly with a plain java -jar.",
         "The Linux Java installers fall back to a portable Java when sudo is not available."
+      ]
+    },
+    {
+      "version": "1.0.3",
+      "date": "2026-09-15",
+      "title": "Linux support",
+      "changes": [
+        "Linux now has its own download: unzip it, run ./install-java.sh if you need Java, then ./launch.sh.",
+        "The Java installer supports Debian, Ubuntu, Fedora, Arch, openSUSE and their derivatives, with a portable Java for everything else.",
+        "If the launcher window can't open or crashes on Wayland, it switches to X11 automatically."
       ]
     },
     {
