@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "entries": [
+    {
+      "version": "1.0.1",
+      "date": "2026-09-15",
+      "title": "Faster cubic rendering and wider worlds",
+      "changes": [
+        "Large render distances are smooth again thanks to cubic chunk cache and rebuild optimisations.",
+        "Worlds now reach close to the 32-bit coordinate limit horizontally.",
+        "Sound stays precise far from spawn."
+      ]
+    },
+    {
+      "version": "1.0",
+      "date": "2026-09-01",
+      "title": "A Brand New World",
+      "changes": [
+        "The first ABNW release."
+      ]
+    }
+  ]
+}
