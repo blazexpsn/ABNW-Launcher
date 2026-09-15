@@ -1,30 +1,39 @@
 package org.teamzetaverse.launcher.ui;
 
+import static org.teamzetaverse.launcher.ui.Theme.px;
+import static org.teamzetaverse.launcher.ui.Theme.u32;
+
+import imgui.ImDrawList;
 import imgui.ImGui;
 import imgui.ImGuiViewport;
+import imgui.flag.ImGuiChildFlags;
 import imgui.flag.ImGuiCol;
-import imgui.flag.ImGuiCond;
-import imgui.flag.ImGuiTableFlags;
+import imgui.flag.ImGuiMouseCursor;
+import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
-import imgui.type.ImBoolean;
-import imgui.type.ImInt;
-import imgui.type.ImString;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.teamzetaverse.launcher.BuildInfo;
 import org.teamzetaverse.launcher.LauncherConfig;
 import org.teamzetaverse.launcher.LauncherPaths;
 import org.teamzetaverse.launcher.auth.Account;
 import org.teamzetaverse.launcher.auth.AccountStore;
 import org.teamzetaverse.launcher.auth.MicrosoftAuth;
+import org.teamzetaverse.launcher.discord.DiscordPresence;
+import org.teamzetaverse.launcher.feed.Feed;
+import org.teamzetaverse.launcher.feed.FeedService;
 import org.teamzetaverse.launcher.instance.Instance;
 import org.teamzetaverse.launcher.instance.InstanceArchive;
 import org.teamzetaverse.launcher.instance.InstanceStore;
@@ -35,53 +44,57 @@ import org.teamzetaverse.launcher.release.Release;
 import org.teamzetaverse.launcher.release.ReleaseService;
 import org.teamzetaverse.launcher.task.Progress;
 import org.teamzetaverse.launcher.task.Tasks;
+import org.teamzetaverse.launcher.update.UpdateChecker;
 
 public final class LauncherUi {
-    private static final String[] RENDERERS = {"auto", "vulkan", "opengl"};
-    private static final String[] RENDERER_LABELS = {"Automatic (Vulkan, falling back to OpenGL)", "Vulkan", "OpenGL"};
-    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM yyyy").withZone(ZoneId.systemDefault());
+    enum Page {
+        HOME, INSTANCES, NEWS, SETTINGS
+    }
 
-    private final LauncherPaths paths;
-    private final LauncherConfig config;
-    private final AccountStore accounts;
-    private final InstanceStore instances;
-    private final ReleaseService releases = new ReleaseService();
-    private final GameInstaller installer;
-    private final GameLauncher gameLauncher;
-    private final Tasks tasks = new Tasks();
-    private final Map<String, GameProcess> running = new ConcurrentHashMap<>();
+    enum InstallState {
+        READY, NEEDS_INSTALL, PLAYING, BUSY
+    }
 
-    private String selectedInstanceId;
-    private final List<String> errors = new ArrayList<>();
-    private String pendingPopup;
+    static final String[] RENDERERS = {"auto", "vulkan", "opengl"};
+    static final String[] RENDERER_LABELS = {"Automatic", "Vulkan", "OpenGL"};
 
-    private ReleaseService.Listing listing;
-    private String listingError;
-    private boolean listingLoading;
-    private int selectedRelease = -1;
+    final LauncherPaths paths;
+    final LauncherConfig config;
+    final AccountStore accounts;
+    final InstanceStore instances;
+    final ReleaseService releases = new ReleaseService();
+    final GameInstaller installer;
+    final GameLauncher gameLauncher;
+    final Tasks tasks = new Tasks();
+    final Map<String, GameProcess> running = new ConcurrentHashMap<>();
+    final ImageCache images;
+    final Showcase showcase;
+    final Announcements announcements;
+    final DiscordPresence discord;
+    final List<String> errors = new ArrayList<>();
+    final Dialogs dialogs;
 
-    private final ImString newName = new ImString(64);
-    private final ImInt newRenderer = new ImInt(0);
-    private final int[] newMemory = {4096};
+    private final FeedService feedService;
+    private final UpdateChecker updateChecker;
+    private final ScheduledExecutorService background = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "ABNW Launcher background");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final HomePage home;
+    private final InstancesPage instancesPage;
+    private final NewsPage newsPage;
+    private final SettingsPage settingsPage;
+    private final Map<String, long[]> installCache = new HashMap<>();
+    private final long openedAt = System.currentTimeMillis() / 1000L;
 
-    private String editorsFor;
-    private final ImInt editRenderer = new ImInt(0);
-    private final int[] editMemory = {4096};
-    private final ImString editJvmArgs = new ImString(512);
-    private final ImString renameText = new ImString(64);
-
-    private MicrosoftAuth.DeviceCode deviceCode;
-    private Progress signInProgress;
-
-    private final ImString settingsClientId = new ImString(128);
-    private final ImString settingsJava = new ImString(512);
-    private final int[] settingsMemory = {4096};
-    private final ImInt settingsRenderer = new ImInt(0);
-    private final float[] settingsScale = {1f};
-
-    private int logVersionShown = -1;
-    private List<String> logLines = List.of();
-    private final ImBoolean logFollow = new ImBoolean(true);
+    Feed feed = FeedService.bundled();
+    UpdateChecker.Status updateStatus = UpdateChecker.Status.pending();
+    volatile boolean checkingUpdates;
+    String selectedInstanceId;
+    Page page = Page.HOME;
+    private List<Showcase.Slide> feedSlides = List.of();
+    private List<Showcase.Slide> localSlides = List.of();
 
     public LauncherUi(final LauncherPaths paths, final LauncherConfig config) {
         this.paths = paths;
@@ -91,6 +104,22 @@ public final class LauncherUi {
         this.installer = new GameInstaller(paths, config);
         this.gameLauncher = new GameLauncher(paths, config);
         this.selectedInstanceId = config.selectedInstance;
+        this.images = new ImageCache(paths.cache().resolve("images"));
+        this.showcase = new Showcase(this.images);
+        this.announcements = new Announcements(config);
+        this.discord = new DiscordPresence(BuildInfo.DISCORD_CLIENT_ID, config.discordPresence);
+        this.feedService = new FeedService(paths);
+        this.updateChecker = new UpdateChecker(this.releases);
+        this.dialogs = new Dialogs(this);
+        this.home = new HomePage(this);
+        this.instancesPage = new InstancesPage(this);
+        this.newsPage = new NewsPage(this);
+        this.settingsPage = new SettingsPage(this);
+        this.applyFeed(this.feed);
+
+        this.background.scheduleWithFixedDelay(this::refreshFeed, 0, 30, TimeUnit.MINUTES);
+        this.background.scheduleWithFixedDelay(this::runUpdateCheck, 2, 30 * 60, TimeUnit.SECONDS);
+        this.background.scheduleWithFixedDelay(this::scanScreenshots, 1, 5 * 60, TimeUnit.SECONDS);
     }
 
     public float uiScale() {
@@ -98,7 +127,7 @@ public final class LauncherUi {
     }
 
     public boolean isAnimating() {
-        return this.tasks.isBusy() || !this.running.isEmpty() || this.listingLoading;
+        return this.tasks.isBusy() || Motion.isMoving() || this.showcase.isAnimating() || this.images.isLoading();
     }
 
     public void beforeFrame() {
@@ -107,332 +136,369 @@ public final class LauncherUi {
 
     public void shutdown() {
         this.config.save();
+        this.background.shutdownNow();
+        this.discord.close();
         this.tasks.shutdown();
+        this.images.dispose();
     }
 
     public void draw() {
+        Motion.beginFrame();
+        this.images.beginFrame();
+        this.updatePresence();
+
         ImGuiViewport viewport = ImGui.getMainViewport();
         ImGui.setNextWindowPos(viewport.getWorkPosX(), viewport.getWorkPosY());
         ImGui.setNextWindowSize(viewport.getWorkSizeX(), viewport.getWorkSizeY());
-        int flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoBringToFrontOnFocus;
-        if (ImGui.begin("ABNW Launcher", flags)) {
-            this.drawHeader();
-            ImGui.separator();
-
-            float taskBarHeight = this.tasks.running().isEmpty() ? 0 : (ImGui.getFrameHeight() + 10) * this.tasks.running().size() + 16;
-            float bodyHeight = ImGui.getContentRegionAvailY() - taskBarHeight;
-            float listWidth = Math.max(240, ImGui.getContentRegionAvailX() * 0.26f);
-
-            if (ImGui.beginChild("instances", listWidth, bodyHeight, true)) {
-                this.drawInstanceList();
-            }
-            ImGui.endChild();
-            ImGui.sameLine();
-            if (ImGui.beginChild("details", 0, bodyHeight, true)) {
-                this.drawDetails();
-            }
-            ImGui.endChild();
-
-            this.drawTaskBar();
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, 0, 0);
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, 0, 0);
+        int flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoBringToFrontOnFocus
+            | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
+        boolean open = ImGui.begin("ABNW Launcher", flags);
+        ImGui.popStyleVar(2);
+        if (open) {
+            float sidebarWidth = px(252);
+            this.drawSidebar(sidebarWidth);
+            ImGui.sameLine(0, 0);
+            this.drawContent();
+            this.dialogs.draw();
         }
-        if (this.pendingPopup != null) {
-            ImGui.openPopup(this.pendingPopup);
-            this.pendingPopup = null;
-        } else if (!this.errors.isEmpty() && !ImGui.isPopupOpen("Something went wrong")) {
-            ImGui.openPopup("Something went wrong");
-        }
-        this.drawNewInstanceDialog();
-        this.drawChangeReleaseDialog();
-        this.drawSignInDialog();
-        this.drawRenameDialog();
-        this.drawDeleteDialog();
-        this.drawSettingsDialog();
-        this.drawErrorDialog();
         ImGui.end();
+
+        float tasksHeight = this.drawTasks();
+        this.announcements.drawToasts(tasksHeight);
     }
 
-    private void drawHeader() {
-        ImGui.pushStyleColor(ImGuiCol.Text, Theme.SUN[0], Theme.SUN[1], Theme.SUN[2], 1f);
-        ImGui.text("A BRAND NEW WORLD");
+    private void drawSidebar(final float width) {
+        float[] bg = Theme.rgba(Theme.SIDEBAR, 1f);
+        ImGui.pushStyleColor(ImGuiCol.ChildBg, bg[0], bg[1], bg[2], 1f);
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(18), px(20));
+        ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, 0);
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(8), px(6));
+        boolean open = ImGui.beginChild("sidebar", width, 0, ImGuiChildFlags.AlwaysUseWindowPadding, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.popStyleVar(3);
         ImGui.popStyleColor();
-        ImGui.sameLine();
-        ImGui.textDisabled("Launcher " + BuildInfo.VERSION);
+        if (open) {
+            ImDrawList dl = ImGui.getWindowDrawList();
+            float wx = ImGui.getWindowPosX();
+            float wy = ImGui.getWindowPosY();
+            float wh = ImGui.getWindowHeight();
+            dl.addLine(wx + width - 1, wy, wx + width - 1, wy + wh, u32(Theme.BORDER_SOFT), 1f);
 
-        String accountLabel = this.currentAccount().map(a -> a.name).orElse("Not signed in");
-        float comboWidth = 220;
-        float buttonsWidth = ImGui.calcTextSize("Add account").x + ImGui.calcTextSize("Settings").x + 60;
-        ImGui.sameLine(ImGui.getWindowWidth() - comboWidth - buttonsWidth - 30);
-        ImGui.setNextItemWidth(comboWidth);
-        if (ImGui.beginCombo("##account", accountLabel)) {
-            for (Account account : this.accounts.all()) {
-                boolean selected = account.uuid.equals(this.config.selectedAccount);
-                if (ImGui.selectable(account.name + "##" + account.uuid, selected)) {
-                    this.config.selectedAccount = account.uuid;
-                    this.config.save();
+            float logoWidth = ImGui.getContentRegionAvailX();
+            ImageCache.Texture logo = this.images.get(Showcase.FALLBACK, 0, true);
+            float logoHeight = logo != null ? logoWidth / logo.aspect() : logoWidth * 0.73f;
+            float lx = ImGui.getCursorScreenPosX();
+            float ly = ImGui.getCursorScreenPosY();
+            boolean logoClicked = ImGui.invisibleButton("logo", logoWidth, logoHeight);
+            boolean logoHovered = ImGui.isItemHovered();
+            float glow = Motion.hover("logo#hover", logoHovered);
+            if (logoHovered) {
+                ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
+            }
+            if (glow > 0.01f) {
+                for (int i = 3; i >= 1; i--) {
+                    float grow = px(3) * i * glow;
+                    dl.addRectFilled(lx - grow, ly - grow, lx + logoWidth + grow, ly + logoHeight + grow, u32(Theme.EMBER, 0.06f * glow / i), px(14) + grow);
                 }
             }
-            if (!this.accounts.all().isEmpty()) {
-                ImGui.separator();
-                Optional<Account> current = this.currentAccount();
-                if (current.isPresent() && ImGui.selectable("Remove " + current.get().name)) {
-                    this.accounts.remove(current.get());
-                    this.config.selectedAccount = this.accounts.all().isEmpty() ? "" : this.accounts.all().get(0).uuid;
-                    this.config.save();
-                }
+            if (logo != null) {
+                dl.addImageRounded(logo.id(), lx, ly, lx + logoWidth, ly + logoHeight, 0, 0, 1, 1, u32(0xFFFFFF), px(14), imgui.flag.ImDrawFlags.RoundCornersAll);
+            } else {
+                dl.addRectFilled(lx, ly, lx + logoWidth, ly + logoHeight, u32(Theme.EMBER_DEEP), px(14));
             }
-            ImGui.endCombo();
+            dl.addRect(lx, ly, lx + logoWidth, ly + logoHeight, u32(0xFFFFFF, 0.08f), px(14), 0, px(1));
+            if (logoClicked) {
+                this.navigate(Page.HOME);
+            }
+            ImGui.dummy(0, px(18));
+
+            this.navItem(Page.HOME, Icons.Icon.HOME, "Home", null);
+            String count = this.instances.all().isEmpty() ? null : String.valueOf(this.instances.all().size());
+            this.navItem(Page.INSTANCES, Icons.Icon.INSTANCES, "Instances", count);
+            this.navItem(Page.NEWS, Icons.Icon.NEWS, "News", null);
+            this.navItem(Page.SETTINGS, Icons.Icon.SETTINGS, "Settings", null);
+
+            UpdateChecker.LauncherUpdate update = this.updateStatus.launcherUpdate();
+            float accountHeight = px(58);
+            float updateHeight = update != null ? px(62) + px(10) : 0;
+            float footer = accountHeight + updateHeight + px(22);
+            float targetY = ImGui.getWindowHeight() - px(20) - footer;
+            if (ImGui.getCursorPosY() < targetY) {
+                ImGui.setCursorPosY(targetY);
+            }
+            if (update != null) {
+                this.drawUpdateCard(update);
+                ImGui.dummy(0, px(10));
+            }
+            this.drawAccount();
+            ImGui.dummy(0, px(6));
+            String version = BuildInfo.isDevBuild() ? "Development build" : "Launcher v" + BuildInfo.VERSION;
+            float vw = Widgets.textWidth(Fonts.tiny, version);
+            ImGui.setCursorPosX(ImGui.getCursorPosX() + (ImGui.getContentRegionAvailX() - vw) * 0.5f);
+            Widgets.text(Fonts.tiny, Theme.FAINT, version);
         }
-        ImGui.sameLine();
-        if (ImGui.button("Add account")) {
-            this.startSignIn();
+        ImGui.endChild();
+    }
+
+    private void navItem(final Page target, final Icons.Icon icon, final String label, final String badge) {
+        String id = "nav-" + target.name();
+        float w = ImGui.getContentRegionAvailX();
+        float h = px(44);
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        boolean clicked = ImGui.invisibleButton(id, w, h);
+        boolean hovered = ImGui.isItemHovered();
+        if (hovered) {
+            ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
         }
-        ImGui.sameLine();
-        if (ImGui.button("Settings")) {
-            this.settingsClientId.set(this.config.msaClientId);
-            this.settingsJava.set(this.config.javaPath);
-            this.settingsMemory[0] = this.config.defaultMemoryMb;
-            this.settingsRenderer.set(indexOf(RENDERERS, this.config.defaultRenderer));
-            this.settingsScale[0] = this.uiScale();
-            this.pendingPopup = "Settings";
+        boolean active = this.page == target;
+        float hv = Motion.hover(id + "#hover", hovered);
+        float av = Motion.to(id + "#active", active ? 1f : 0f, 14f);
+        ImDrawList dl = ImGui.getWindowDrawList();
+        dl.addRectFilled(x, y, x + w, y + h, u32(0xFFFFFF, 0.045f * hv * (1f - av)), px(12));
+        if (av > 0.01f) {
+            dl.addRectFilledMultiColor(x + px(6), y, x + w * 0.9f, y + h, u32(Theme.EMBER, 0.16f * av), u32(Theme.EMBER, 0.02f * av),
+                u32(Theme.EMBER, 0.02f * av), u32(Theme.EMBER, 0.16f * av));
+            dl.addRect(x, y, x + w, y + h, u32(Theme.EMBER, 0.22f * av), px(12), 0, px(1));
+            float barH = h * 0.5f * av;
+            dl.addRectFilled(x, y + (h - barH) * 0.5f, x + px(3), y + (h + barH) * 0.5f, u32(Theme.EMBER, av), px(2));
+        }
+        int iconColor = u32(Theme.mix(Theme.mix(Theme.MUTED, Theme.TEXT, hv), Theme.EMBER, av));
+        int textColor = u32(Theme.mix(Theme.MUTED, Theme.TEXT, Math.max(hv, av)));
+        float iconSize = px(19);
+        Icons.draw(dl, icon, x + px(14), y + (h - iconSize) * 0.5f, iconSize, iconColor);
+        Widgets.drawText(dl, Fonts.label, x + px(46), y + (h - Fonts.label.size()) * 0.5f - px(0.5f), textColor, label);
+        if (badge != null) {
+            float bw = Math.max(px(22), Widgets.textWidth(Fonts.tiny, badge) + px(12));
+            float bh = px(20);
+            float bx = x + w - px(12) - bw;
+            float by = y + (h - bh) * 0.5f;
+            dl.addRectFilled(bx, by, bx + bw, by + bh, u32(active ? Theme.EMBER : Theme.SURFACE_HOVER, active ? 0.9f : 1f), bh * 0.5f);
+            float tw = Widgets.textWidth(Fonts.tiny, badge);
+            Widgets.drawText(dl, Fonts.tiny, bx + (bw - tw) * 0.5f, by + (bh - Fonts.tiny.size()) * 0.5f - px(0.5f),
+                u32(active ? Theme.ON_EMBER : Theme.MUTED), badge);
+        }
+        if (clicked) {
+            this.navigate(target);
         }
     }
 
-    private void drawInstanceList() {
-        ImGui.textDisabled("INSTANCES");
-        if (Theme.accentButton("New instance", -1, 0)) {
-            this.openNewInstance();
+    private void drawUpdateCard(final UpdateChecker.LauncherUpdate update) {
+        float w = ImGui.getContentRegionAvailX();
+        float h = px(62);
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        boolean clicked = ImGui.invisibleButton("launcher-update", w, h);
+        boolean hovered = ImGui.isItemHovered();
+        if (hovered) {
+            ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
         }
-        if (ImGui.button("Import .abnw", -1, 0)) {
-            this.importArchive();
-        }
-        ImGui.separator();
-        if (this.instances.all().isEmpty()) {
-            ImGui.textWrapped("No instances yet. Create one to install ABNW.");
-            return;
-        }
-        for (Instance instance : this.instances.all()) {
-            boolean selected = instance.id.equals(this.selectedInstanceId);
-            String badge = this.running.containsKey(instance.id) ? "  (playing)" : "";
-            if (ImGui.selectable(instance.name + badge + "##" + instance.id, selected, 0, 0, ImGui.getFrameHeight() * 1.4f)) {
-                this.select(instance);
-            }
-            ImGui.sameLine();
-            ImGui.textDisabled(instance.release.displayName());
+        float hv = Motion.hover("launcher-update#hover", hovered);
+        ImDrawList dl = ImGui.getWindowDrawList();
+        dl.addRectFilledMultiColor(x, y, x + w, y + h, u32(Theme.EMBER, 0.22f + 0.08f * hv), u32(Theme.SUN, 0.10f + 0.06f * hv),
+            u32(Theme.SUN, 0.10f + 0.06f * hv), u32(Theme.EMBER, 0.22f + 0.08f * hv));
+        dl.addRect(x, y, x + w, y + h, u32(Theme.EMBER, 0.55f + 0.3f * hv), px(12), 0, px(1));
+        float iconSize = px(20);
+        Icons.draw(dl, Icons.Icon.DOWNLOAD, x + px(14), y + (h - iconSize) * 0.5f, iconSize, u32(Theme.SUN));
+        Widgets.drawText(dl, Fonts.label, x + px(44), y + px(12), u32(Theme.TEXT), "Update ready");
+        Widgets.drawText(dl, Fonts.small, x + px(44), y + px(12) + Fonts.label.size() + px(2), u32(Theme.MUTED), "Launcher v" + update.version());
+        if (clicked) {
+            Desktop.browse(update.url());
         }
     }
 
-    private void select(final Instance instance) {
+    private void drawAccount() {
+        Optional<Account> account = this.currentAccount();
+        float w = ImGui.getContentRegionAvailX();
+        float h = px(58);
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        boolean clicked = ImGui.invisibleButton("account", w, h);
+        boolean hovered = ImGui.isItemHovered();
+        if (hovered) {
+            ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
+        }
+        float hv = Motion.hover("account#hover", hovered || ImGui.isPopupOpen("account-menu"));
+        ImDrawList dl = ImGui.getWindowDrawList();
+        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.mix(Theme.SURFACE, Theme.SURFACE_HI, hv)), px(14));
+        dl.addRect(x, y, x + w, y + h, u32(Theme.BORDER_SOFT), px(14), 0, px(1));
+        float avatar = px(36);
+        float ax = x + px(11);
+        float ay = y + (h - avatar) * 0.5f;
+        String name = account.map(a -> a.name).orElse("Sign in");
+        if (account.isPresent()) {
+            dl.addRectFilledMultiColor(ax, ay, ax + avatar, ay + avatar, u32(Theme.EMBER), u32(Theme.SUN), u32(Theme.EMBER_LO), u32(Theme.MAROON));
+            dl.addRect(ax - px(0.5f), ay - px(0.5f), ax + avatar + px(0.5f), ay + avatar + px(0.5f), u32(Theme.SURFACE, 1f), px(10), 0, px(3));
+            String initial = name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase();
+            float iw = Widgets.textWidth(Fonts.heading, initial);
+            Widgets.drawText(dl, Fonts.heading, ax + (avatar - iw) * 0.5f, ay + (avatar - Fonts.heading.size()) * 0.5f - px(1), u32(Theme.ON_EMBER), initial);
+        } else {
+            dl.addRectFilled(ax, ay, ax + avatar, ay + avatar, u32(Theme.SURFACE_HOVER), px(10));
+            Icons.draw(dl, Icons.Icon.USER, ax + px(8), ay + px(8), avatar - px(16), u32(Theme.MUTED));
+        }
+        float tx = ax + avatar + px(11);
+        float textWidth = w - (tx - x) - px(30);
+        Widgets.drawText(dl, Fonts.label, tx, y + px(11), u32(Theme.TEXT), Widgets.ellipsize(Fonts.label, name, textWidth));
+        Widgets.drawText(dl, Fonts.small, tx, y + px(11) + Fonts.label.size() + px(1), u32(Theme.FAINT),
+            account.isPresent() ? "Microsoft account" : "Microsoft account needed");
+        Icons.draw(dl, Icons.Icon.CHEVRON_DOWN, x + w - px(26), y + (h - px(14)) * 0.5f, px(14), u32(Theme.MUTED));
+        if (clicked) {
+            if (account.isEmpty() && this.accounts.all().isEmpty()) {
+                this.startSignIn();
+            } else {
+                ImGui.openPopup("account-menu");
+            }
+        }
+        ImGui.setNextWindowPos(x, y - px(8), 0, 0f, 1f);
+        ImGui.setNextWindowSize(w, 0);
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(8), px(8));
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(4), px(4));
+        if (ImGui.beginPopup("account-menu")) {
+            for (Account entry : this.accounts.all()) {
+                boolean selected = account.isPresent() && account.get().uuid.equals(entry.uuid);
+                if (this.menuItem("acct-" + entry.uuid, selected ? Icons.Icon.CHECK : Icons.Icon.USER, entry.name, selected)) {
+                    this.config.selectedAccount = entry.uuid;
+                    this.config.save();
+                    ImGui.closeCurrentPopup();
+                }
+            }
+            if (this.menuItem("acct-add", Icons.Icon.PLUS, "Add another account", false)) {
+                ImGui.closeCurrentPopup();
+                this.startSignIn();
+            }
+            if (account.isPresent() && this.menuItem("acct-remove", Icons.Icon.LOGOUT, "Sign out " + account.get().name, false)) {
+                this.accounts.remove(account.get());
+                this.config.selectedAccount = this.accounts.all().isEmpty() ? "" : this.accounts.all().get(0).uuid;
+                this.config.save();
+                ImGui.closeCurrentPopup();
+            }
+            ImGui.endPopup();
+        }
+        ImGui.popStyleVar(2);
+    }
+
+    boolean menuItem(final String id, final Icons.Icon icon, final String label, final boolean highlighted) {
+        float w = Math.max(ImGui.getContentRegionAvailX(), px(200));
+        float h = px(36);
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        boolean clicked = ImGui.invisibleButton(id, w, h);
+        boolean hovered = ImGui.isItemHovered();
+        if (hovered) {
+            ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
+        }
+        ImDrawList dl = ImGui.getWindowDrawList();
+        if (hovered) {
+            dl.addRectFilled(x, y, x + w, y + h, u32(0xFFFFFF, 0.06f), px(9));
+        }
+        int color = u32(highlighted ? Theme.EMBER : hovered ? Theme.TEXT : Theme.MUTED);
+        Icons.draw(dl, icon, x + px(10), y + (h - px(16)) * 0.5f, px(16), color);
+        Widgets.drawText(dl, Fonts.body, x + px(36), y + (h - Fonts.body.size()) * 0.5f - px(0.5f), u32(highlighted || hovered ? Theme.TEXT : Theme.MUTED),
+            Widgets.ellipsize(Fonts.body, label, w - px(46)));
+        return clicked;
+    }
+
+    private void drawContent() {
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(36), px(30));
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(12), px(10));
+        ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarSize, px(8));
+        boolean open = ImGui.beginChild("content", 0, 0, ImGuiChildFlags.AlwaysUseWindowPadding, 0);
+        ImGui.popStyleVar(3);
+        if (open) {
+            float alpha = Motion.to("page#alpha", 1f, 11f);
+            ImGui.pushStyleVar(ImGuiStyleVar.Alpha, Math.max(0.01f, alpha));
+            ImGui.setCursorPosY(ImGui.getCursorPosY() + (1f - alpha) * px(12));
+            switch (this.page) {
+                case HOME -> this.home.draw();
+                case INSTANCES -> this.instancesPage.draw();
+                case NEWS -> this.newsPage.draw();
+                case SETTINGS -> this.settingsPage.draw();
+            }
+            ImGui.dummy(0, this.tasks.running().isEmpty() ? px(4) : px(90));
+            ImGui.popStyleVar();
+        }
+        ImGui.endChild();
+    }
+
+    private float drawTasks() {
+        List<Progress> running = this.tasks.running();
+        if (running.isEmpty()) {
+            return 0;
+        }
+        ImGuiViewport viewport = ImGui.getMainViewport();
+        float width = Math.min(px(520), viewport.getWorkSizeX() - px(252) - px(72));
+        float centerX = viewport.getWorkPosX() + px(252) + (viewport.getWorkSizeX() - px(252)) * 0.5f;
+        float bottom = viewport.getWorkPosY() + viewport.getWorkSizeY() - px(24);
+        float[] bg = Theme.rgba(Theme.SURFACE_HI, 1f);
+        float[] border = Theme.rgba(Theme.BORDER, 1f);
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(18), px(14));
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, px(18));
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, px(1));
+        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(10), px(6));
+        ImGui.pushStyleColor(ImGuiCol.WindowBg, bg[0], bg[1], bg[2], 0.97f);
+        ImGui.pushStyleColor(ImGuiCol.Border, border[0], border[1], border[2], 1f);
+        ImGui.setNextWindowPos(centerX, bottom, 0, 0.5f, 1f);
+        ImGui.setNextWindowSize(width, 0);
+        float height = 0;
+        int flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing
+            | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.AlwaysAutoResize;
+        if (ImGui.begin("##tasks", flags)) {
+            int index = 0;
+            for (Progress progress : running) {
+                ImGui.pushID(index++);
+                float fraction = progress.fraction();
+                float textWidth = ImGui.getContentRegionAvailX() - px(40);
+                Widgets.text(Fonts.label, Theme.TEXT, Widgets.ellipsize(Fonts.label, progress.title(), textWidth));
+                ImGui.sameLine();
+                Widgets.alignRight(px(28));
+                if (Widgets.iconButton("cancel", Icons.Icon.CLOSE, px(28), "Cancel", true)) {
+                    progress.cancel();
+                }
+                String status = progress.status().isEmpty() ? "Working…" : progress.status();
+                if (fraction >= 0) {
+                    status = Math.round(fraction * 100) + "%  ·  " + status;
+                }
+                ImGui.setCursorPosY(ImGui.getCursorPosY() - px(6));
+                Widgets.text(Fonts.small, Theme.MUTED, Widgets.ellipsize(Fonts.small, status, ImGui.getContentRegionAvailX()));
+                Widgets.progress(fraction, -1, px(6));
+                if (index < running.size()) {
+                    ImGui.dummy(0, px(6));
+                }
+                ImGui.popID();
+            }
+            height = ImGui.getWindowHeight() + px(12);
+        }
+        ImGui.end();
+        ImGui.popStyleColor(2);
+        ImGui.popStyleVar(4);
+        return height;
+    }
+
+    void navigate(final Page target) {
+        if (this.page != target) {
+            this.page = target;
+            Motion.set("page#alpha", 0f);
+        }
+    }
+
+    Optional<Instance> selectedInstance() {
+        if (this.selectedInstanceId != null) {
+            Optional<Instance> found = this.instances.find(this.selectedInstanceId);
+            if (found.isPresent()) {
+                return found;
+            }
+        }
+        return this.instances.all().stream().max(Comparator.comparingLong(i -> Math.max(i.lastPlayed, i.created)));
+    }
+
+    void select(final Instance instance) {
         this.selectedInstanceId = instance.id;
         this.config.selectedInstance = instance.id;
         this.config.save();
     }
 
-    private Optional<Instance> selectedInstance() {
-        return this.selectedInstanceId == null ? Optional.empty() : this.instances.find(this.selectedInstanceId);
-    }
-
-    private void drawDetails() {
-        Optional<Instance> maybe = this.selectedInstance();
-        if (maybe.isEmpty()) {
-            ImGui.dummy(0, 40);
-            ImGui.textWrapped("A Brand New World installs Minecraft from Mojang and turns it into ABNW with a small patch. "
-                + "Select an instance, or create one to get started.");
-            if (this.accounts.all().isEmpty()) {
-                ImGui.spacing();
-                Theme.textColored(Theme.MUTED, "You'll need to sign in with the Microsoft account that owns Minecraft: Java Edition "
-                    + "(or has PC Game Pass). Use \"Add account\" at the top.");
-            }
-            return;
-        }
-        Instance instance = maybe.get();
-        this.bindEditors(instance);
-        GameProcess process = this.running.get(instance.id);
-        boolean busy = process != null || this.isInstanceBusy(instance);
-
-        ImGui.text(instance.name);
-        ImGui.textDisabled(instance.release.displayName() + "  -  for Minecraft " + instance.release.minecraft);
-        ImGui.spacing();
-
-        if (process != null) {
-            if (ImGui.button("Stop game", 180, 44)) {
-                process.kill();
-            }
-            ImGui.sameLine();
-            Theme.textColored(Theme.OK, "Playing for " + formatDuration(System.currentTimeMillis() - process.startedMillis()));
-        } else {
-            ImGui.beginDisabled(busy);
-            if (Theme.accentButton("PLAY", 180, 44)) {
-                this.play(instance);
-            }
-            ImGui.endDisabled();
-        }
-        ImGui.sameLine();
-        ImGui.beginDisabled(busy);
-        if (ImGui.button("Change release", 0, 44)) {
-            this.openChangeRelease(instance);
-        }
-        ImGui.endDisabled();
-
-        if (ImGui.beginTabBar("instanceTabs")) {
-            if (ImGui.beginTabItem("Overview")) {
-                this.drawOverview(instance, busy);
-                ImGui.endTabItem();
-            }
-            if (ImGui.beginTabItem("Game log")) {
-                this.drawLog(instance);
-                ImGui.endTabItem();
-            }
-            ImGui.endTabBar();
-        }
-    }
-
-    private void bindEditors(final Instance instance) {
-        if (instance.id.equals(this.editorsFor)) {
-            return;
-        }
-        this.editorsFor = instance.id;
-        this.editRenderer.set(indexOf(RENDERERS, instance.renderer));
-        this.editMemory[0] = instance.memoryMb > 0 ? instance.memoryMb : this.config.defaultMemoryMb;
-        this.editJvmArgs.set(instance.extraJvmArgs == null ? "" : instance.extraJvmArgs);
-        this.logVersionShown = -1;
-    }
-
-    private void drawOverview(final Instance instance, final boolean busy) {
-        ImGui.spacing();
-        if (ImGui.beginTable("facts", 2, ImGuiTableFlags.SizingStretchProp)) {
-            row("Release", instance.release.displayName());
-            row("Minecraft", instance.release.minecraft);
-            row("Created", instance.created > 0 ? DATE.format(Instant.ofEpochMilli(instance.created)) : "-");
-            row("Last played", instance.lastPlayed > 0 ? DATE.format(Instant.ofEpochMilli(instance.lastPlayed)) : "Never");
-            row("Time played", formatDuration(instance.totalPlayMillis));
-            ImGui.endTable();
-        }
-
-        ImGui.separatorText("Game settings");
-        ImGui.setNextItemWidth(360);
-        if (ImGui.combo("Renderer", this.editRenderer, RENDERER_LABELS)) {
-            instance.renderer = RENDERERS[this.editRenderer.get()];
-            this.saveQuietly(instance);
-        }
-        ImGui.setNextItemWidth(360);
-        if (ImGui.sliderInt("Memory (MB)", this.editMemory, 2048, maxMemoryMb(), "%d MB")) {
-            instance.memoryMb = roundTo(this.editMemory[0], 256);
-        }
-        if (ImGui.isItemDeactivatedAfterEdit()) {
-            this.saveQuietly(instance);
-        }
-        ImGui.setNextItemWidth(360);
-        ImGui.inputTextWithHint("Extra Java arguments", "e.g. -XX:+UseZGC", this.editJvmArgs);
-        if (ImGui.isItemDeactivatedAfterEdit()) {
-            instance.extraJvmArgs = this.editJvmArgs.get().trim();
-            this.saveQuietly(instance);
-        }
-
-        ImGui.separatorText("Folders");
-        if (ImGui.button("Open game folder")) {
-            Desktop.open(instance.gameFolder());
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Open mods folder")) {
-            Desktop.open(instance.modsFolder());
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Open worlds")) {
-            Desktop.open(instance.gameFolder().resolve("saves"));
-        }
-
-        ImGui.separatorText("Manage");
-        ImGui.beginDisabled(busy);
-        if (ImGui.button("Export .abnw")) {
-            this.exportArchive(instance);
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Repair")) {
-            this.prepare(instance, null);
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Rename")) {
-            this.renameText.set(instance.name);
-            this.pendingPopup = "Rename instance";
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Delete")) {
-            this.pendingPopup = "Delete instance";
-        }
-        ImGui.endDisabled();
-    }
-
-    private static void row(final String label, final String value) {
-        ImGui.tableNextRow();
-        ImGui.tableNextColumn();
-        ImGui.textDisabled(label);
-        ImGui.tableNextColumn();
-        ImGui.text(value);
-    }
-
-    private void drawLog(final Instance instance) {
-        GameProcess process = this.running.get(instance.id);
-        if (process == null) {
-            if (this.logLines.isEmpty() || !instance.id.equals(this.editorsFor)) {
-                ImGui.textDisabled("The game's output appears here while it runs.");
-                if (ImGui.button("Open launcher logs folder")) {
-                    Desktop.open(this.paths.logs());
-                }
-                return;
-            }
-        } else if (process.version() != this.logVersionShown) {
-            this.logVersionShown = process.version();
-            this.logLines = process.lines();
-        }
-        ImGui.checkbox("Follow output", this.logFollow);
-        ImGui.sameLine();
-        if (ImGui.button("Copy")) {
-            ImGui.setClipboardText(String.join("\n", this.logLines));
-        }
-        if (ImGui.beginChild("log", 0, 0, true, ImGuiWindowFlags.HorizontalScrollbar)) {
-            for (String line : this.logLines) {
-                if (line.contains("ERROR") || line.contains("Exception")) {
-                    ImGui.pushStyleColor(ImGuiCol.Text, Theme.ERROR[0], Theme.ERROR[1], Theme.ERROR[2], 1f);
-                    ImGui.textUnformatted(line);
-                    ImGui.popStyleColor();
-                } else if (line.contains("WARN")) {
-                    ImGui.pushStyleColor(ImGuiCol.Text, Theme.SUN[0], Theme.SUN[1], Theme.SUN[2], 1f);
-                    ImGui.textUnformatted(line);
-                    ImGui.popStyleColor();
-                } else {
-                    ImGui.textUnformatted(line);
-                }
-            }
-            if (this.logFollow.get() && ImGui.getScrollY() >= ImGui.getScrollMaxY() - 40) {
-                ImGui.setScrollHereY(1f);
-            }
-        }
-        ImGui.endChild();
-    }
-
-    private void drawTaskBar() {
-        for (Progress progress : this.tasks.running()) {
-            float fraction = progress.fraction();
-            String overlay = progress.title() + (progress.status().isEmpty() ? "" : " - " + progress.status());
-            float width = ImGui.getContentRegionAvailX() - 90;
-            if (fraction < 0) {
-                float t = (float)((System.nanoTime() / 1_000_000_000.0) % 1.0);
-                ImGui.progressBar(t, width, 0, overlay);
-            } else {
-                ImGui.progressBar(fraction, width, 0, overlay);
-            }
-            ImGui.sameLine();
-            if (ImGui.button("Cancel##" + System.identityHashCode(progress), 80, 0)) {
-                progress.cancel();
-            }
-        }
-    }
-
-    private boolean isInstanceBusy(final Instance instance) {
-        return this.tasks.running().stream().anyMatch(p -> p.title().contains(instance.name));
-    }
-
-    private Optional<Account> currentAccount() {
+    Optional<Account> currentAccount() {
         Optional<Account> selected = this.accounts.find(this.config.selectedAccount);
         if (selected.isPresent() || this.accounts.all().isEmpty()) {
             return selected;
@@ -440,11 +506,42 @@ public final class LauncherUi {
         return Optional.of(this.accounts.all().get(0));
     }
 
-    private MicrosoftAuth auth() {
-        return new MicrosoftAuth(this.config.effectiveClientId());
+    Release latestRelease() {
+        return this.updateStatus.latestGame();
     }
 
-    private void fail(final Throwable error) {
+    boolean isOutdated(final Instance instance) {
+        Release latest = this.latestRelease();
+        return latest != null && instance.release != null && !latest.id.equals(instance.release.id)
+            && UpdateChecker.compare(latest.id, instance.release.id) > 0;
+    }
+
+    boolean isBusy(final Instance instance) {
+        return this.tasks.running().stream().anyMatch(p -> p.title().endsWith(instance.name));
+    }
+
+    InstallState installState(final Instance instance) {
+        if (this.running.containsKey(instance.id)) {
+            return InstallState.PLAYING;
+        }
+        if (this.isBusy(instance)) {
+            return InstallState.BUSY;
+        }
+        if (instance.release == null || !instance.release.isResolved()) {
+            return InstallState.NEEDS_INSTALL;
+        }
+        String key = instance.id + ":" + instance.release.target.sha256;
+        long now = System.currentTimeMillis();
+        long[] cached = this.installCache.get(key);
+        if (cached == null || now - cached[1] > 4000) {
+            Path jar = this.paths.patchedJars().resolve(instance.release.patchedJarName());
+            cached = new long[]{Files.isRegularFile(jar) ? 1 : 0, now};
+            this.installCache.put(key, cached);
+        }
+        return cached[0] == 1 ? InstallState.READY : InstallState.NEEDS_INSTALL;
+    }
+
+    void fail(final Throwable error) {
         String message = error.getMessage();
         if (message == null || message.isBlank()) {
             message = error.getClass().getSimpleName();
@@ -452,25 +549,31 @@ public final class LauncherUi {
         this.errors.add(message);
     }
 
-    private void play(final Instance instance) {
+    MicrosoftAuth auth() {
+        return new MicrosoftAuth(this.config.effectiveClientId());
+    }
+
+    void play(final Instance instance) {
         Optional<Account> maybeAccount = this.currentAccount();
         if (maybeAccount.isEmpty()) {
-            this.errors.add("Sign in with the Microsoft account that owns Minecraft: Java Edition before playing. Use \"Add account\" at the top.");
+            this.startSignIn();
             return;
         }
         Account account = maybeAccount.get();
+        this.select(instance);
         this.tasks.submit("Launching " + instance.name, progress -> {
+            progress.status("Signing in…");
             this.auth().refresh(account, progress);
             this.accounts.save();
             var installed = this.installer.install(instance.release, this.instances.readLibraries(instance), progress);
             progress.checkCancelled();
-            progress.stage("Starting the game...", 0);
+            progress.stage("Starting the game…", 0);
             return this.gameLauncher.launch(instance, installed, account, exited -> this.tasks.onUi(() -> this.gameExited(instance, exited)));
         }, process -> {
             this.running.put(instance.id, process);
             instance.lastPlayed = System.currentTimeMillis();
             this.saveQuietly(instance);
-            this.logVersionShown = -1;
+            this.installCache.clear();
         }, this::fail);
     }
 
@@ -478,263 +581,90 @@ public final class LauncherUi {
         this.running.remove(instance.id, process);
         instance.totalPlayMillis += System.currentTimeMillis() - process.startedMillis();
         this.saveQuietly(instance);
-        this.logLines = process.lines();
+        this.instancesPage.rememberLog(instance, process.lines());
+        this.background.execute(this::scanScreenshots);
     }
 
-    private void prepare(final Instance instance, final Runnable after) {
-        this.tasks.submit("Preparing " + instance.name, progress -> {
+    void stop(final Instance instance) {
+        GameProcess process = this.running.get(instance.id);
+        if (process != null) {
+            process.kill();
+        }
+    }
+
+    void prepare(final Instance instance) {
+        this.tasks.submit("Installing " + instance.name, progress -> {
             this.installer.install(instance.release, this.instances.readLibraries(instance), progress);
             return Boolean.TRUE;
-        }, ok -> {
-            if (after != null) {
-                after.run();
-            }
-        }, this::fail);
+        }, ok -> this.installCache.clear(), this::fail);
     }
 
-    private void saveQuietly(final Instance instance) {
+    void saveQuietly(final Instance instance) {
         try {
             this.instances.save(instance);
-        } catch (java.io.IOException e) {
+        } catch (IOException e) {
             this.fail(e);
         }
     }
 
-    private void loadListing() {
-        if (this.listingLoading) {
-            return;
-        }
-        this.listingLoading = true;
-        this.listingError = null;
-        this.tasks.submit("Loading ABNW releases", progress -> this.releases.fetchListing(), result -> {
-            this.listingLoading = false;
-            this.listing = result;
-            this.selectedRelease = -1;
-            for (int i = 0; i < result.releases().size(); i++) {
-                if (result.releases().get(i).id.equals(result.latest())) {
-                    this.selectedRelease = i;
-                }
-            }
-            if (this.selectedRelease < 0 && !result.releases().isEmpty()) {
-                this.selectedRelease = 0;
-            }
-        }, error -> {
-            this.listingLoading = false;
-            this.listingError = "Could not load the ABNW releases: " + error.getMessage();
-        });
-    }
-
-    private Release drawReleasePicker(final String currentId) {
-        if (this.listingLoading) {
-            ImGui.text("Loading releases...");
-            return null;
-        }
-        if (this.listingError != null) {
-            Theme.textColored(Theme.ERROR, this.listingError);
-            if (ImGui.button("Try again")) {
-                this.loadListing();
-            }
-            return null;
-        }
-        if (this.listing == null) {
-            return null;
-        }
-        if (this.listing.releases().isEmpty()) {
-            ImGui.textWrapped("No ABNW releases are published yet.");
-            return null;
-        }
-        int tableFlags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingStretchProp;
-        if (ImGui.beginTable("releases", 3, tableFlags, 0, 220)) {
-            ImGui.tableSetupColumn("Release");
-            ImGui.tableSetupColumn("Minecraft");
-            ImGui.tableSetupColumn("Released");
-            ImGui.tableHeadersRow();
-            for (int i = 0; i < this.listing.releases().size(); i++) {
-                Release release = this.listing.releases().get(i);
-                ImGui.tableNextRow();
-                ImGui.tableNextColumn();
-                String label = release.displayName() + (release.id.equals(this.listing.latest()) ? "  (latest)" : "")
-                    + (release.id.equals(currentId) ? "  (current)" : "");
-                if (ImGui.selectable(label + "##release" + i, i == this.selectedRelease, imgui.flag.ImGuiSelectableFlags.SpanAllColumns)) {
-                    this.selectedRelease = i;
-                }
-                ImGui.tableNextColumn();
-                ImGui.text(release.minecraft);
-                ImGui.tableNextColumn();
-                ImGui.text(release.releaseTime == null || release.releaseTime.length() < 10 ? "" : release.releaseTime.substring(0, 10));
-            }
-            ImGui.endTable();
-        }
-        return this.selectedRelease >= 0 && this.selectedRelease < this.listing.releases().size()
-            ? this.listing.releases().get(this.selectedRelease)
-            : null;
-    }
-
-    private void openNewInstance() {
-        this.newName.set("");
-        this.newRenderer.set(indexOf(RENDERERS, this.config.defaultRenderer));
-        this.newMemory[0] = this.config.defaultMemoryMb;
-        this.loadListing();
-        this.pendingPopup = "New instance";
-    }
-
-    private void drawNewInstanceDialog() {
-        centerNextModal(640);
-        if (!ImGui.beginPopupModal("New instance", null, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)) {
-            return;
-        }
-        ImGui.textWrapped("Pick an ABNW release. The launcher downloads Minecraft from Mojang and applies the release's patch.");
-        ImGui.spacing();
-        Release release = this.drawReleasePicker(null);
-        ImGui.spacing();
-        ImGui.setNextItemWidth(360);
-        ImGui.inputTextWithHint("Name", release == null ? "My world" : release.displayName(), this.newName);
-        ImGui.setNextItemWidth(360);
-        ImGui.combo("Renderer", this.newRenderer, RENDERER_LABELS);
-        ImGui.setNextItemWidth(360);
-        ImGui.sliderInt("Memory", this.newMemory, 2048, maxMemoryMb(), "%d MB");
-        ImGui.spacing();
-
-        ImGui.beginDisabled(release == null);
-        if (Theme.accentButton("Create and install", 200, 0) && release != null) {
-            String name = this.newName.get().trim().isEmpty() ? release.displayName() : this.newName.get().trim();
-            int memory = roundTo(this.newMemory[0], 256);
-            String renderer = RENDERERS[this.newRenderer.get()];
-            this.tasks.submit("Creating " + name, progress -> {
-                progress.status("Fetching " + release.displayName() + "...");
-                ReleaseService.Resolved resolved = this.releases.resolve(release);
-                return this.instances.create(name, resolved, memory, renderer);
-            }, created -> {
-                this.select(created);
-                this.prepare(created, null);
-            }, this::fail);
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.endDisabled();
-        ImGui.sameLine();
-        if (ImGui.button("Cancel", 120, 0)) {
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.endPopup();
-    }
-
-    private void openChangeRelease(final Instance instance) {
-        this.loadListing();
-        this.pendingPopup = "Change release";
-    }
-
-    private void drawChangeReleaseDialog() {
-        centerNextModal(640);
-        if (!ImGui.beginPopupModal("Change release", null, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)) {
-            return;
-        }
-        Optional<Instance> maybe = this.selectedInstance();
-        if (maybe.isEmpty()) {
-            ImGui.closeCurrentPopup();
-            ImGui.endPopup();
-            return;
-        }
-        Instance instance = maybe.get();
-        ImGui.textWrapped("Choose the ABNW release " + instance.name + " plays. Worlds, settings and mods stay; "
-            + "the new release is downloaded and patched the next time you play.");
-        ImGui.spacing();
-        Release release = this.drawReleasePicker(instance.release.id);
-        ImGui.spacing();
-        boolean same = release != null && release.id.equals(instance.release.id) && release.minecraft.equals(instance.release.minecraft);
-        ImGui.beginDisabled(release == null || same);
-        if (Theme.accentButton("Switch release", 200, 0) && release != null) {
-            this.tasks.submit("Switching " + instance.name, progress -> {
-                progress.status("Fetching " + release.displayName() + "...");
-                ReleaseService.Resolved resolved = this.releases.resolve(release);
-                this.instances.setRelease(instance, resolved);
-                return Boolean.TRUE;
-            }, ok -> this.prepare(instance, null), this::fail);
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.endDisabled();
-        ImGui.sameLine();
-        if (ImGui.button("Cancel", 120, 0)) {
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.endPopup();
-    }
-
-    private void startSignIn() {
-        MicrosoftAuth auth = this.auth();
-        this.deviceCode = null;
-        this.tasks.submit("Starting Microsoft sign-in", progress -> auth.requestDeviceCode(), code -> {
-            this.deviceCode = code;
-            this.pendingPopup = "Sign in with Microsoft";
-            this.signInProgress = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), account -> {
-                this.accounts.put(account);
-                this.config.selectedAccount = account.uuid;
-                this.config.save();
-                this.deviceCode = null;
-                this.signInProgress = null;
-            }, error -> {
-                this.deviceCode = null;
-                this.signInProgress = null;
-                this.fail(error);
-            });
+    void createInstance(final String name, final Release release, final int memory, final String renderer) {
+        this.tasks.submit("Creating " + name, progress -> {
+            progress.status("Fetching " + release.displayName() + "…");
+            ReleaseService.Resolved resolved = this.releases.resolve(release);
+            return this.instances.create(name, resolved, memory, renderer);
+        }, created -> {
+            this.select(created);
+            this.navigate(Page.INSTANCES);
+            this.prepare(created);
         }, this::fail);
     }
 
-    private void drawSignInDialog() {
-        centerNextModal(520);
-        if (!ImGui.beginPopupModal("Sign in with Microsoft", null, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)) {
-            return;
-        }
-        MicrosoftAuth.DeviceCode code = this.deviceCode;
-        if (code == null) {
-            ImGui.closeCurrentPopup();
-            ImGui.endPopup();
-            return;
-        }
-        ImGui.textWrapped("To sign in, open this page in your browser and enter the code below. "
-            + "Use the Microsoft account that owns Minecraft: Java Edition (or has PC Game Pass).");
-        ImGui.spacing();
-        ImGui.text(code.verificationUri());
-        ImGui.spacing();
-        ImGui.pushStyleColor(ImGuiCol.Text, Theme.SUN[0], Theme.SUN[1], Theme.SUN[2], 1f);
-        ImGui.text("Code:  " + code.userCode());
-        ImGui.popStyleColor();
-        ImGui.spacing();
-        if (Theme.accentButton("Copy code and open page", 240, 0)) {
-            ImGui.setClipboardText(code.userCode());
-            Desktop.browse(code.verificationUri());
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Cancel", 120, 0)) {
-            if (this.signInProgress != null) {
-                this.signInProgress.cancel();
-            }
-            this.deviceCode = null;
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.spacing();
-        ImGui.textDisabled(this.signInProgress == null || this.signInProgress.status().isEmpty()
-            ? "Waiting for you to finish signing in..."
-            : this.signInProgress.status());
-        ImGui.endPopup();
+    void switchRelease(final Instance instance, final Release release) {
+        this.tasks.submit("Switching " + instance.name, progress -> {
+            progress.status("Fetching " + release.displayName() + "…");
+            ReleaseService.Resolved resolved = this.releases.resolve(release);
+            this.instances.setRelease(instance, resolved);
+            return Boolean.TRUE;
+        }, ok -> {
+            this.installCache.clear();
+            this.prepare(instance);
+        }, this::fail);
     }
 
-    private void importArchive() {
+    void startSignIn() {
+        MicrosoftAuth auth = this.auth();
+        this.tasks.submit("Connecting to Microsoft", progress -> auth.requestDeviceCode(), code -> {
+            Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), account -> {
+                this.accounts.put(account);
+                this.config.selectedAccount = account.uuid;
+                this.config.save();
+                this.dialogs.signInFinished();
+            }, error -> {
+                this.dialogs.signInFinished();
+                this.fail(error);
+            });
+            this.dialogs.openSignIn(code, signIn);
+        }, this::fail);
+    }
+
+    void importArchive() {
         Path archive = Desktop.chooseArchiveToOpen();
         if (archive == null) {
             return;
         }
         this.tasks.submit("Importing " + archive.getFileName(), progress -> {
             Instance described = InstanceArchive.peek(archive);
-            progress.status("Fetching " + described.release.displayName() + "...");
+            progress.status("Fetching " + described.release.displayName() + "…");
             ReleaseService.Resolved resolved = this.releases.resolve(described.release);
             return InstanceArchive.importArchive(archive, this.instances, resolved, progress);
         }, imported -> {
             this.select(imported);
-            this.prepare(imported, null);
+            this.navigate(Page.INSTANCES);
+            this.prepare(imported);
         }, this::fail);
     }
 
-    private void exportArchive(final Instance instance) {
+    void exportArchive(final Instance instance) {
         Path target = Desktop.chooseArchiveToSave(instance.name.replaceAll("[^A-Za-z0-9 ._-]", ""));
         if (target == null) {
             return;
@@ -743,184 +673,177 @@ public final class LauncherUi {
             InstanceArchive.export(instance, target, progress);
             return target;
         }, done -> {
+            Announcements.Entry entry = new Announcements.Entry();
+            entry.id = "export-" + System.nanoTime();
+            entry.title = "Export complete";
+            entry.message = instance.name + " is ready to share as " + done.getFileName() + ".";
+            entry.level = "success";
+            entry.once = false;
+            entry.actionLabel = "Show file";
+            entry.action = () -> Desktop.open(done.getParent());
+            this.announcements.put(entry);
         }, this::fail);
     }
 
-    private void drawRenameDialog() {
-        centerNextModal(420);
-        if (!ImGui.beginPopupModal("Rename instance", null, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)) {
-            return;
-        }
-        if (ImGui.isWindowAppearing()) {
-            ImGui.setKeyboardFocusHere();
-        }
-        ImGui.setNextItemWidth(360);
-        boolean submitted = ImGui.inputText("##name", this.renameText, imgui.flag.ImGuiInputTextFlags.EnterReturnsTrue);
-        if (Theme.accentButton("Rename", 120, 0) || submitted) {
-            this.selectedInstance().ifPresent(instance -> {
-                try {
-                    this.instances.rename(instance, this.renameText.get());
-                } catch (java.io.IOException e) {
-                    this.fail(e);
-                }
-            });
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Cancel", 120, 0)) {
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.endPopup();
+    void checkForUpdatesNow() {
+        this.background.execute(this::runUpdateCheck);
     }
 
-    private void drawDeleteDialog() {
-        centerNextModal(460);
-        if (!ImGui.beginPopupModal("Delete instance", null, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)) {
+    private void runUpdateCheck() {
+        if (this.checkingUpdates) {
             return;
         }
-        Optional<Instance> maybe = this.selectedInstance();
-        if (maybe.isEmpty()) {
-            ImGui.closeCurrentPopup();
-            ImGui.endPopup();
-            return;
+        this.checkingUpdates = true;
+        try {
+            UpdateChecker.Status status = this.updateChecker.check();
+            this.tasks.onUi(() -> this.applyUpdateStatus(status));
+        } catch (RuntimeException e) {
+            System.err.println("Update check failed: " + e);
+        } finally {
+            this.checkingUpdates = false;
         }
-        Instance instance = maybe.get();
-        ImGui.textWrapped("Delete " + instance.name + "? Its worlds, settings and mods are deleted with it. "
-            + "Export it first if you want to keep anything.");
-        ImGui.spacing();
-        ImGui.pushStyleColor(ImGuiCol.Button, 0.6f, 0.15f, 0.15f, 1f);
-        ImGui.pushStyleColor(ImGuiCol.ButtonHovered, 0.75f, 0.2f, 0.2f, 1f);
-        if (ImGui.button("Delete", 120, 0)) {
-            try {
-                this.instances.delete(instance);
-                this.selectedInstanceId = null;
-            } catch (java.io.IOException e) {
-                this.fail(e);
-            }
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.popStyleColor(2);
-        ImGui.sameLine();
-        if (ImGui.button("Cancel", 120, 0)) {
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.endPopup();
     }
 
-    private void drawSettingsDialog() {
-        centerNextModal(620);
-        if (!ImGui.beginPopupModal("Settings", null, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)) {
-            return;
+    private void applyUpdateStatus(final UpdateChecker.Status status) {
+        this.updateStatus = status;
+        UpdateChecker.LauncherUpdate update = status.launcherUpdate();
+        if (update != null) {
+            Announcements.Entry entry = new Announcements.Entry();
+            entry.id = "launcher-update-" + update.version();
+            entry.title = "A new launcher update is available";
+            entry.message = "Launcher v" + update.version() + " is ready with the latest improvements.";
+            entry.level = "info";
+            entry.sticky = true;
+            entry.actionLabel = "Download";
+            entry.action = () -> Desktop.browse(update.url());
+            this.announcements.put(entry);
         }
-        ImGui.separatorText("New instances");
-        ImGui.setNextItemWidth(360);
-        ImGui.combo("Default renderer", this.settingsRenderer, RENDERER_LABELS);
-        ImGui.setNextItemWidth(360);
-        ImGui.sliderInt("Default memory", this.settingsMemory, 2048, maxMemoryMb(), "%d MB");
-
-        ImGui.separatorText("Java");
-        ImGui.setNextItemWidth(360);
-        ImGui.inputTextWithHint("Java executable", "Empty: download the Java Minecraft asks for", this.settingsJava);
-        ImGui.sameLine();
-        if (ImGui.button("Browse")) {
-            Path java = Desktop.chooseJava();
-            if (java != null) {
-                this.settingsJava.set(java.toString());
+        Release latest = status.latestGame();
+        if (latest != null) {
+            if (this.config.lastSeenGameRelease.isEmpty()) {
+                this.config.lastSeenGameRelease = latest.id;
+                this.config.save();
+            } else if (!this.config.lastSeenGameRelease.equals(latest.id)) {
+                Announcements.Entry entry = new Announcements.Entry();
+                entry.id = "game-release-" + latest.id;
+                entry.title = latest.displayName() + " is here";
+                entry.message = "A brand new build of A Brand New World is ready. Switch an instance over and dive in.";
+                entry.level = "release";
+                entry.style = "toast";
+                entry.sticky = true;
+                entry.actionLabel = "Take me there";
+                entry.action = () -> this.navigate(Page.INSTANCES);
+                entry.onDismiss = () -> {
+                    this.config.lastSeenGameRelease = latest.id;
+                    this.config.save();
+                };
+                this.announcements.put(entry);
             }
         }
-
-        ImGui.separatorText("Microsoft sign-in");
-        ImGui.setNextItemWidth(360);
-        ImGui.inputTextWithHint("Client ID", BuildInfo.MSA_CLIENT_ID.isEmpty() ? "Not set in this build" : "Built-in: " + BuildInfo.MSA_CLIENT_ID,
-            this.settingsClientId);
-        ImGui.textDisabled("Leave empty to use the client ID this launcher was built with.");
-
-        ImGui.separatorText("Interface");
-        ImGui.setNextItemWidth(360);
-        ImGui.sliderFloat("Scale (after restart)", this.settingsScale, 0.75f, 2f, "%.2fx");
-
-        ImGui.separatorText("About");
-        ImGui.textDisabled("Releases from github.com/" + BuildInfo.REPOSITORY);
-        ImGui.textDisabled("Data folder: " + this.paths.root());
-        if (ImGui.button("Open data folder")) {
-            Desktop.open(this.paths.root());
-        }
-        ImGui.textDisabled("NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.");
-
-        ImGui.spacing();
-        if (Theme.accentButton("Save", 120, 0)) {
-            this.config.defaultRenderer = RENDERERS[this.settingsRenderer.get()];
-            this.config.defaultMemoryMb = roundTo(this.settingsMemory[0], 256);
-            this.config.javaPath = this.settingsJava.get().trim();
-            this.config.msaClientId = this.settingsClientId.get().trim();
-            this.config.uiScale = this.settingsScale[0];
-            this.config.save();
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.sameLine();
-        if (ImGui.button("Cancel", 120, 0)) {
-            ImGui.closeCurrentPopup();
-        }
-        ImGui.endPopup();
     }
 
-    private void drawErrorDialog() {
-        centerNextModal(520);
-        if (!ImGui.beginPopupModal("Something went wrong", null, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings)) {
+    private void refreshFeed() {
+        try {
+            FeedService.Loaded loaded = this.feedService.load();
+            this.tasks.onUi(() -> this.applyFeed(loaded.feed()));
+        } catch (RuntimeException e) {
+            System.err.println("Feed refresh failed: " + e);
+        }
+    }
+
+    private void applyFeed(final Feed next) {
+        this.feed = next;
+        this.announcements.setFeed(next.announcements, Desktop::browse);
+        List<Showcase.Slide> slides = new ArrayList<>();
+        for (Feed.Screenshot shot : next.screenshots) {
+            slides.add(new Showcase.Slide(shot.url, shot.caption, shot.credit));
+        }
+        this.feedSlides = slides;
+        this.pushSlides();
+    }
+
+    void scanScreenshots() {
+        try {
+            this.scanScreenshotsUnsafe();
+        } catch (RuntimeException e) {
+            System.err.println("Screenshot scan failed: " + e);
+        }
+    }
+
+    private void scanScreenshotsUnsafe() {
+        List<Path> screenshotFolders = new ArrayList<>();
+        for (Instance instance : List.copyOf(this.instances.all())) {
+            screenshotFolders.add(instance.gameFolder().resolve("screenshots"));
+        }
+        List<Path> files = new ArrayList<>();
+        collectImages(this.paths.showcase(), files, 24);
+        List<Showcase.Slide> slides = new ArrayList<>();
+        for (Path file : files) {
+            slides.add(new Showcase.Slide("file:" + file.toAbsolutePath(), "Featured", ""));
+        }
+        List<Path> shots = new ArrayList<>();
+        for (Path folder : screenshotFolders) {
+            collectImages(folder, shots, 64);
+        }
+        shots.sort(Comparator.comparingLong(LauncherUi::modified).reversed());
+        for (Path shot : shots.subList(0, Math.min(10, shots.size()))) {
+            slides.add(new Showcase.Slide("file:" + shot.toAbsolutePath(), "Your screenshots", ""));
+        }
+        List<Showcase.Slide> result = List.copyOf(slides);
+        this.tasks.onUi(() -> {
+            this.localSlides = result;
+            this.pushSlides();
+        });
+    }
+
+    private void pushSlides() {
+        List<Showcase.Slide> all = new ArrayList<>(this.feedSlides);
+        all.addAll(this.localSlides);
+        this.showcase.setSlides(all);
+    }
+
+    private static void collectImages(final Path folder, final List<Path> into, final int limit) {
+        if (!Files.isDirectory(folder)) {
             return;
         }
-        if (this.errors.isEmpty()) {
-            ImGui.closeCurrentPopup();
-            ImGui.endPopup();
-            return;
+        try (Stream<Path> stream = Files.list(folder)) {
+            stream.filter(Files::isRegularFile)
+                .filter(p -> {
+                    String name = p.getFileName().toString().toLowerCase();
+                    return name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg");
+                })
+                .sorted(Comparator.comparingLong(LauncherUi::modified).reversed())
+                .limit(limit)
+                .forEach(into::add);
+        } catch (IOException e) {
+            System.err.println("Could not list " + folder + ": " + e.getMessage());
         }
-        Theme.textColored(Theme.ERROR, this.errors.get(0));
-        ImGui.spacing();
-        if (ImGui.button("OK", 120, 0)) {
-            this.errors.remove(0);
-            if (this.errors.isEmpty()) {
-                ImGui.closeCurrentPopup();
+    }
+
+    private static long modified(final Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toMillis();
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    private void updatePresence() {
+        GameProcess playing = null;
+        Instance playingInstance = null;
+        for (Map.Entry<String, GameProcess> entry : this.running.entrySet()) {
+            Optional<Instance> instance = this.instances.find(entry.getKey());
+            if (instance.isPresent()) {
+                playing = entry.getValue();
+                playingInstance = instance.get();
             }
         }
-        ImGui.sameLine();
-        if (ImGui.button("Copy", 120, 0)) {
-            ImGui.setClipboardText(this.errors.get(0));
+        if (playing != null) {
+            this.discord.setActivity(new DiscordPresence.Activity("Playing ABNW", playingInstance.release.displayName(),
+                playing.startedMillis() / 1000L, "Get the ABNW Launcher", BuildInfo.launcherReleasesPage()));
+        } else {
+            this.discord.setActivity(new DiscordPresence.Activity("In the launcher", "Getting ready to explore", this.openedAt,
+                "Get the ABNW Launcher", BuildInfo.launcherReleasesPage()));
         }
-        ImGui.endPopup();
-    }
-
-    private static void centerNextModal(final float width) {
-        ImGuiViewport viewport = ImGui.getMainViewport();
-        ImGui.setNextWindowPos(viewport.getWorkPosX() + viewport.getWorkSizeX() / 2, viewport.getWorkPosY() + viewport.getWorkSizeY() / 2,
-            ImGuiCond.Appearing, 0.5f, 0.5f);
-        ImGui.setNextWindowSize(width, 0, ImGuiCond.Appearing);
-    }
-
-    private static int indexOf(final String[] values, final String value) {
-        for (int i = 0; i < values.length; i++) {
-            if (values[i].equals(value)) {
-                return i;
-            }
-        }
-        return 0;
-    }
-
-    private static int roundTo(final int value, final int step) {
-        return Math.max(step, Math.round(value / (float)step) * step);
-    }
-
-    private static int maxMemoryMb() {
-        long total = 16L * 1024;
-        if (java.lang.management.ManagementFactory.getOperatingSystemMXBean() instanceof com.sun.management.OperatingSystemMXBean os) {
-            total = os.getTotalMemorySize() / (1024 * 1024);
-        }
-        return (int)Math.max(4096, Math.min(64L * 1024, total - 2048));
-    }
-
-    private static String formatDuration(final long millis) {
-        Duration duration = Duration.ofMillis(Math.max(0, millis));
-        long hours = duration.toHours();
-        long minutes = duration.toMinutesPart();
-        return hours > 0 ? hours + " h " + minutes + " min" : minutes + " min";
     }
 }

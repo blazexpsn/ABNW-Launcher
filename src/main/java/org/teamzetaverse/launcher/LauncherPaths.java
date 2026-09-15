@@ -72,4 +72,12 @@ public final class LauncherPaths {
     public Path logs() {
         return this.root.resolve("logs");
     }
+
+    public Path cache() {
+        return this.root.resolve("cache");
+    }
+
+    public Path showcase() {
+        return this.root.resolve("showcase");
+    }
 }

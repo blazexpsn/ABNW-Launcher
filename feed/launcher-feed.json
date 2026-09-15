@@ -1,0 +1,53 @@
+{
+  "formatVersion": 1,
+  "news": [
+    {
+      "id": "launcher-arrives",
+      "title": "The ABNW Launcher has arrived",
+      "summary": "One home for every world you build. Create as many instances as you like, pick the build each one runs, choose Vulkan or OpenGL, and share a whole instance with friends as a single .abnw file.",
+      "date": "2026-09-15",
+      "tag": "Launcher",
+      "url": "https://github.com/blazexpsn/ABNW-Launcher",
+      "image": ""
+    },
+    {
+      "id": "taller-deeper",
+      "title": "Worlds that go further down than ever",
+      "summary": "ABNW's cubic engine streams the world above and below you the same way it streams the horizon, so caves, lava lakes and everything under them load in around you as you dig.",
+      "date": "2026-09-14",
+      "tag": "Engine",
+      "url": "",
+      "image": ""
+    },
+    {
+      "id": "native-enchantments",
+      "title": "New enchantments, built right in",
+      "summary": "Vein mining, Midas Touch, Magnetism, Soulbound, Wisdom, Behead and more now live in the base game, and mods and datapacks can define effects of their own.",
+      "date": "2026-09-13",
+      "tag": "Gameplay",
+      "url": "",
+      "image": ""
+    }
+  ],
+  "announcements": [
+    {
+      "id": "welcome-1",
+      "title": "Welcome to A Brand New World",
+      "message": "Create an instance, sign in, and press Play. Everything else is taken care of.",
+      "style": "banner",
+      "level": "success",
+      "startsAt": "",
+      "endsAt": "",
+      "once": true,
+      "sticky": false,
+      "actionLabel": "",
+      "actionUrl": ""
+    }
+  ],
+  "teasers": [
+    { "text": "The horizon is further away than you think.", "hint": "Coming later" },
+    { "text": "Something is stirring far beneath bedrock.", "hint": "Keep digging" },
+    { "text": "Titanium is only the first new metal.", "hint": "Soon" }
+  ],
+  "screenshots": []
+}

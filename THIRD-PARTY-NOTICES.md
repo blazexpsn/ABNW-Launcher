@@ -14,4 +14,14 @@ The ABNW Launcher is proprietary (see `LICENSE`). The jar bundles these librarie
 | vcdiff-core | Apache 2.0 | https://github.com/ehrmann/vcdiff-java |
 | SLF4J | MIT | https://github.com/qos-ch/slf4j |
 
+## Fonts
+
+| Font | Licence | Source |
+|---|---|---|
+| Space Grotesk | SIL Open Font License 1.1 | https://github.com/floriankarsten/space-grotesk |
+| Plus Jakarta Sans | SIL Open Font License 1.1 | https://github.com/tokotype/PlusJakartaSans |
+| JetBrains Mono | SIL Open Font License 1.1 | https://github.com/JetBrains/JetBrainsMono |
+
+The fonts are bundled unmodified, with their licences, under `assets/fonts/` in the launcher jar.
+
 The full licence texts are published by each project at the source links above. Where a library ships its licence inside its jar, that file is kept in the launcher jar under `META-INF/`.

@@ -56,13 +56,19 @@ def buildInfo = [
 		version    : version.toString(),
 		repository : prop("releases_repository"),
 		branch     : prop("releases_branch"),
+		launcherRepository: prop("launcher_repository"),
+		launcherBranch    : prop("launcher_branch"),
 		msaClientId: prop("msa_client_id"),
+		discordClientId   : prop("discord_client_id"),
 ]
 
 tasks.processResources {
 	inputs.properties(buildInfo)
 	filesMatching("abnw-launcher.properties") {
 		expand(buildInfo)
+	}
+	from("feed") {
+		into("feed")
 	}
 }
 

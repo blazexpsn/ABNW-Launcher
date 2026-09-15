@@ -2,6 +2,8 @@ package org.teamzetaverse.launcher;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import org.teamzetaverse.launcher.util.Json;
 
 public final class LauncherConfig {
@@ -12,6 +14,9 @@ public final class LauncherConfig {
     public String selectedAccount = "";
     public String selectedInstance = "";
     public float uiScale = 1.0f;
+    public boolean discordPresence = true;
+    public String lastSeenGameRelease = "";
+    public List<String> dismissedAnnouncements = new ArrayList<>();
 
     private transient LauncherPaths paths;
 
@@ -26,6 +31,12 @@ public final class LauncherConfig {
         }
         if (config == null) {
             config = new LauncherConfig();
+        }
+        if (config.dismissedAnnouncements == null) {
+            config.dismissedAnnouncements = new ArrayList<>();
+        }
+        if (config.lastSeenGameRelease == null) {
+            config.lastSeenGameRelease = "";
         }
         config.paths = paths;
         return config;

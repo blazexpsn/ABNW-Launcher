@@ -66,6 +66,25 @@ public final class Http {
         return send(request(url).GET().build());
     }
 
+    public static byte[] getBytes(final String url, final long maxBytes) throws IOException {
+        try {
+            HttpResponse<InputStream> response = CLIENT.send(request(url).GET().build(), HttpResponse.BodyHandlers.ofInputStream());
+            try (InputStream in = response.body()) {
+                if (response.statusCode() / 100 != 2) {
+                    throw new StatusException(url, response.statusCode(), "");
+                }
+                byte[] bytes = in.readNBytes((int)Math.min(Integer.MAX_VALUE - 8, maxBytes + 1));
+                if (bytes.length > maxBytes) {
+                    throw new IOException(url + " is larger than " + maxBytes + " bytes");
+                }
+                return bytes;
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted", e);
+        }
+    }
+
     public static JsonObject getJson(final String url) throws IOException {
         return Json.parseObject(getString(url));
     }

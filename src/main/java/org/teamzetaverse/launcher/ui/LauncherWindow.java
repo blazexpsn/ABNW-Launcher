@@ -3,7 +3,6 @@ package org.teamzetaverse.launcher.ui;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 
-import imgui.ImFontConfig;
 import imgui.ImGui;
 import imgui.ImGuiIO;
 import imgui.gl3.ImGuiImplGl3;
@@ -40,11 +39,11 @@ public final class LauncherWindow {
         }
         glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 
-        this.window = glfwCreateWindow(1180, 740, "ABNW Launcher", MemoryUtil.NULL, MemoryUtil.NULL);
+        this.window = glfwCreateWindow(1320, 840, "ABNW Launcher", MemoryUtil.NULL, MemoryUtil.NULL);
         if (this.window == MemoryUtil.NULL) {
             throw new IllegalStateException("Could not create the launcher window (OpenGL 3.2 is required)");
         }
-        glfwSetWindowSizeLimits(this.window, 860, 560, GLFW_DONT_CARE, GLFW_DONT_CARE);
+        glfwSetWindowSizeLimits(this.window, 1040, 660, GLFW_DONT_CARE, GLFW_DONT_CARE);
         this.setIcon();
         glfwMakeContextCurrent(this.window);
         glfwSwapInterval(1);
@@ -55,10 +54,7 @@ public final class LauncherWindow {
         ImGuiIO io = ImGui.getIO();
         io.setIniFilename(null);
         io.setConfigWindowsMoveFromTitleBarOnly(true);
-        ImFontConfig fontConfig = new ImFontConfig();
-        fontConfig.setSizePixels(17f * scale);
-        io.getFonts().addFontDefaultVector(fontConfig);
-        fontConfig.destroy();
+        Fonts.load(io, scale);
         Theme.apply(scale);
 
         this.imguiGlfw.init(this.window, true);
@@ -86,7 +82,7 @@ public final class LauncherWindow {
                     glfwGetFramebufferSize(this.window, w, h);
                     glViewport(0, 0, w.get(0), h.get(0));
                 }
-                glClearColor(0.105f, 0.086f, 0.133f, 1f);
+                glClearColor(0.059f, 0.043f, 0.051f, 1f);
                 glClear(GL_COLOR_BUFFER_BIT);
                 this.imguiGl3.renderDrawData(ImGui.getDrawData());
                 glfwSwapBuffers(this.window);
