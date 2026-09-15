@@ -5,69 +5,121 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import org.teamzetaverse.launcher.BuildInfo;
 import org.teamzetaverse.launcher.LauncherPaths;
 import org.teamzetaverse.launcher.net.Http;
 import org.teamzetaverse.launcher.util.Json;
 
 public final class FeedService {
-    public record Loaded(Feed feed, boolean live) {
+    public static final String NEWS = "news.json";
+    public static final String LAUNCHER_CHANGELOG = "launcher-changelog.json";
+    public static final String ABNW_CHANGELOG = "abnw-changelog.json";
+    private static final long MAX_DOCUMENT_BYTES = 4L * 1024 * 1024;
+
+    public record Loaded(Feed news, Changelog launcherChangelog, Changelog abnwChangelog, boolean live) {
     }
 
-    private final Path cacheFile;
+    private interface Parser<T> {
+        T parse(String text) throws IOException;
+    }
+
+    private record Document<T>(T value, boolean live) {
+    }
+
+    private final Path cacheDir;
 
     public FeedService(final LauncherPaths paths) {
-        this.cacheFile = paths.cache().resolve("launcher-feed.json");
+        this.cacheDir = paths.cache().resolve("feed");
     }
 
     public Loaded load() {
-        try {
-            String text = Http.getString(BuildInfo.feedUrl());
-            Feed feed = parse(text);
+        Document<Feed> news = this.fetch(NEWS, FeedService::parseFeed, Feed.empty());
+        Document<Changelog> launcher = this.fetch(LAUNCHER_CHANGELOG, FeedService::parseChangelog, Changelog.empty());
+        Document<Changelog> abnw = this.fetch(ABNW_CHANGELOG, FeedService::parseChangelog, Changelog.empty());
+        return new Loaded(news.value(), launcher.value(), abnw.value(), news.live() && launcher.live() && abnw.live());
+    }
+
+    public static Loaded bundled() {
+        return new Loaded(
+            bundled(NEWS, FeedService::parseFeed, Feed.empty()),
+            bundled(LAUNCHER_CHANGELOG, FeedService::parseChangelog, Changelog.empty()),
+            bundled(ABNW_CHANGELOG, FeedService::parseChangelog, Changelog.empty()),
+            false
+        );
+    }
+
+    private <T> Document<T> fetch(final String name, final Parser<T> parser, final T empty) {
+        Path cached = this.cacheDir.resolve(name);
+        for (String url : new String[]{BuildInfo.feedApiUrl(name), BuildInfo.feedRawUrl(name)}) {
             try {
-                Json.writeString(this.cacheFile, text);
-            } catch (IOException e) {
-                System.err.println("Could not cache the launcher feed: " + e.getMessage());
-            }
-            return new Loaded(feed, true);
-        } catch (IOException | RuntimeException e) {
-            System.err.println("Launcher feed unavailable, using the cached copy: " + e.getMessage());
-        }
-        if (Files.isRegularFile(this.cacheFile)) {
-            try {
-                return new Loaded(parse(Files.readString(this.cacheFile, StandardCharsets.UTF_8)), false);
+                String text = url.startsWith("https://api.github.com/")
+                    ? new String(Http.getBytes(url, MAX_DOCUMENT_BYTES, Map.of("Accept", "application/vnd.github.raw+json", "X-GitHub-Api-Version", "2022-11-28")),
+                        StandardCharsets.UTF_8)
+                    : new String(Http.getBytes(url, MAX_DOCUMENT_BYTES), StandardCharsets.UTF_8);
+                T value = parser.parse(text);
+                try {
+                    Json.writeString(cached, text);
+                } catch (IOException e) {
+                    System.err.println("Could not cache " + name + ": " + e.getMessage());
+                }
+                return new Document<>(value, true);
             } catch (IOException | RuntimeException e) {
-                System.err.println("Cached launcher feed is unreadable: " + e.getMessage());
+                System.err.println("Could not fetch " + name + " from " + url + ": " + e.getMessage());
             }
         }
-        return new Loaded(bundled(), false);
+        if (Files.isRegularFile(cached)) {
+            try {
+                return new Document<>(parser.parse(Files.readString(cached, StandardCharsets.UTF_8)), false);
+            } catch (IOException | RuntimeException e) {
+                System.err.println("Cached " + name + " is unreadable: " + e.getMessage());
+            }
+        }
+        return new Document<>(bundled(name, parser, empty), false);
     }
 
-    public static Feed bundled() {
-        try (InputStream in = FeedService.class.getResourceAsStream("/feed/launcher-feed.json")) {
+    private static <T> T bundled(final String name, final Parser<T> parser, final T empty) {
+        try (InputStream in = FeedService.class.getResourceAsStream("/feed/" + name)) {
             if (in != null) {
-                return parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+                return parser.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
             }
         } catch (IOException | RuntimeException e) {
-            System.err.println("Bundled launcher feed is unreadable: " + e.getMessage());
+            System.err.println("Bundled " + name + " is unreadable: " + e.getMessage());
         }
-        return Feed.empty();
+        return empty;
     }
 
-    static Feed parse(final String text) throws IOException {
+    static Feed parseFeed(final String text) throws IOException {
         Feed feed;
         try {
             feed = Json.GSON.fromJson(text, Feed.class);
         } catch (RuntimeException e) {
-            throw new IOException("invalid launcher feed: " + e.getMessage(), e);
+            throw new IOException("invalid news.json: " + e.getMessage(), e);
         }
         if (feed == null) {
-            throw new IOException("empty launcher feed");
+            throw new IOException("empty news.json");
         }
         if (feed.formatVersion > 1) {
-            throw new IOException("the launcher feed uses a newer format");
+            throw new IOException("news.json uses a newer format");
         }
         feed.sanitize();
         return feed;
+    }
+
+    static Changelog parseChangelog(final String text) throws IOException {
+        Changelog changelog;
+        try {
+            changelog = Json.GSON.fromJson(text, Changelog.class);
+        } catch (RuntimeException e) {
+            throw new IOException("invalid changelog: " + e.getMessage(), e);
+        }
+        if (changelog == null) {
+            throw new IOException("empty changelog");
+        }
+        if (changelog.formatVersion > 1) {
+            throw new IOException("the changelog uses a newer format");
+        }
+        changelog.sanitize();
+        return changelog;
     }
 }

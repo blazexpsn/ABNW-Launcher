@@ -28,7 +28,7 @@ final class AbnwPatcher {
         Path delta = deltasDir.resolve(release.deltaFileName());
         if (!Hashing.matches(delta, "SHA-256", release.delta.sha256, release.delta.size)) {
             progress.stage("Downloading the " + release.displayName() + " patch", release.delta.size);
-            Http.download(release.delta.url, delta, release.delta.sha256, progress::advance);
+            Http.download(release.delta.url, delta, release.delta.sha256, progress::advance, progress::isCancelled);
         }
         progress.checkCancelled();
 
@@ -58,7 +58,7 @@ final class AbnwPatcher {
         Files.createDirectories(jarsDir);
         Path temp = jarsDir.resolve(output.getFileName() + ".part");
         Files.write(temp, rebuilt);
-        Files.move(temp, output, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        org.teamzetaverse.launcher.util.FileMoves.replace(temp, output);
         return output;
     }
 }

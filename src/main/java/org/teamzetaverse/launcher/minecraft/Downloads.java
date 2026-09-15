@@ -41,7 +41,7 @@ final class Downloads {
                         return null;
                     }
                     if (!Hashing.matches(entry.target(), "SHA-1", entry.sha1(), entry.size())) {
-                        Http.download(entry.url(), entry.target(), entry.sha1(), null);
+                        Http.download(entry.url(), entry.target(), entry.sha1(), null, progress::isCancelled);
                     }
                     progress.advance(1);
                     return null;
@@ -52,6 +52,9 @@ final class Downloads {
                     future.get();
                 } catch (ExecutionException e) {
                     Throwable cause = e.getCause();
+                    if (cause instanceof Http.CancelledDownloadException || progress.isCancelled()) {
+                        throw new Progress.CancelledException();
+                    }
                     throw cause instanceof IOException io ? io : new IOException(cause);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();

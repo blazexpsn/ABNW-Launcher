@@ -52,8 +52,12 @@ public final class BuildInfo {
         return "https://github.com/" + REPOSITORY + "/releases/download/";
     }
 
-    public static String feedUrl() {
-        return "https://raw.githubusercontent.com/" + LAUNCHER_REPOSITORY + "/" + LAUNCHER_BRANCH + "/feed/launcher-feed.json";
+    public static String feedApiUrl(final String fileName) {
+        return "https://api.github.com/repos/" + LAUNCHER_REPOSITORY + "/contents/feed/" + fileName + "?ref=" + LAUNCHER_BRANCH;
+    }
+
+    public static String feedRawUrl(final String fileName) {
+        return "https://raw.githubusercontent.com/" + LAUNCHER_REPOSITORY + "/" + LAUNCHER_BRANCH + "/feed/" + fileName;
     }
 
     public static String latestLauncherReleaseApi() {

@@ -76,6 +76,49 @@ final class JavaRuntimes {
         return java;
     }
 
+    private static final Map<String, Integer> VERSION_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
+
+    static int majorVersion(final Path executable) throws IOException {
+        Path probe = executable;
+        String fileName = executable.getFileName().toString();
+        if (fileName.equalsIgnoreCase("javaw.exe")) {
+            Path console = executable.resolveSibling("java.exe");
+            if (Files.isRegularFile(console)) {
+                probe = console;
+            }
+        }
+        String cacheKey = probe.toAbsolutePath() + "|" + Files.getLastModifiedTime(probe).toMillis();
+        Integer cached = VERSION_CACHE.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        Process process = new ProcessBuilder(probe.toString(), "-XshowSettings:properties", "-version").redirectErrorStream(true).start();
+        String output;
+        try (java.io.InputStream in = process.getInputStream()) {
+            output = new String(in.readNBytes(1 << 20), StandardCharsets.UTF_8);
+        }
+        try {
+            if (!process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                throw new IOException("Java at " + executable + " did not report its version.");
+            }
+        } catch (InterruptedException e) {
+            process.destroyForcibly();
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while checking Java at " + executable, e);
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("java\\.specification\\.version\\s*=\\s*(\\d+)(?:\\.(\\d+))?").matcher(output);
+        if (!matcher.find()) {
+            throw new IOException("Could not read the version of the Java at " + executable + ". Is it a Java executable?");
+        }
+        int major = Integer.parseInt(matcher.group(1));
+        if (major == 1 && matcher.group(2) != null) {
+            major = Integer.parseInt(matcher.group(2));
+        }
+        VERSION_CACHE.put(cacheKey, major);
+        return major;
+    }
+
     static Path findJava(final Path home) throws IOException {
         if (!Files.isDirectory(home)) {
             return null;

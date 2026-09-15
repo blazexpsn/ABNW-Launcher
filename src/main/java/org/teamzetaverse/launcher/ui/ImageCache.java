@@ -52,6 +52,8 @@ final class ImageCache {
     }
 
     private static final long MAX_BYTES = 16L * 1024 * 1024;
+    private static final int MAX_DIMENSION = 8192;
+    private static final long MAX_PIXELS = 8192L * 8192L;
     private static final int MAX_READY = 28;
 
     private final Path diskCache;
@@ -183,7 +185,7 @@ final class ImageCache {
                 Files.createDirectories(this.diskCache);
                 Path temp = cached.resolveSibling(cached.getFileName() + ".part");
                 Files.write(temp, bytes);
-                Files.move(temp, cached, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+                org.teamzetaverse.launcher.util.FileMoves.replace(temp, cached);
             } catch (IOException e) {
                 System.err.println("Could not cache image " + key + ": " + e.getMessage());
             }
@@ -197,6 +199,13 @@ final class ImageCache {
             IntBuffer w = stack.mallocInt(1);
             IntBuffer h = stack.mallocInt(1);
             IntBuffer channels = stack.mallocInt(1);
+            if (!STBImage.stbi_info_from_memory(file, w, h, channels)) {
+                throw new IOException(STBImage.stbi_failure_reason());
+            }
+            long pixelCount = (long)w.get(0) * (long)h.get(0);
+            if (w.get(0) <= 0 || h.get(0) <= 0 || w.get(0) > MAX_DIMENSION || h.get(0) > MAX_DIMENSION || pixelCount > MAX_PIXELS) {
+                throw new IOException("image is " + w.get(0) + "x" + h.get(0) + ", beyond the " + MAX_DIMENSION + "px / " + MAX_PIXELS + " pixel limit");
+            }
             ByteBuffer pixels = STBImage.stbi_load_from_memory(file, w, h, channels, 4);
             if (pixels == null) {
                 throw new IOException(STBImage.stbi_failure_reason());

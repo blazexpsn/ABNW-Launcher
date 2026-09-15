@@ -155,6 +155,9 @@ public final class MicrosoftAuth {
 
         progress.checkCancelled();
         boolean entitled = hasJavaEntitlement(Http.getJson(ENTITLEMENTS_URL, account.minecraftToken));
+        if (!entitled) {
+            throw new AuthException("This Microsoft account does not own Minecraft: Java Edition and has no PC Game Pass.");
+        }
 
         JsonObject profile;
         try {
@@ -162,9 +165,6 @@ public final class MicrosoftAuth {
         } catch (Http.StatusException e) {
             if (e.status != 404) {
                 throw e;
-            }
-            if (!entitled) {
-                throw new AuthException("This Microsoft account does not own Minecraft: Java Edition and has no PC Game Pass.");
             }
             throw new AuthException("This account can play Java Edition but has no Minecraft profile yet. "
                 + "Open the official Minecraft Launcher once to create one, then sign in again.");

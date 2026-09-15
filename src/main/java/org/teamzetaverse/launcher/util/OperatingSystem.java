@@ -15,17 +15,25 @@ public enum OperatingSystem {
         this.lwjglName = lwjglName;
     }
 
+    private static final String NAME = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
     public static final OperatingSystem CURRENT = detect();
 
     private static OperatingSystem detect() {
-        String name = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        if (name.contains("win")) {
+        if (NAME.startsWith("windows")) {
             return WINDOWS;
         }
-        if (name.contains("mac") || name.contains("darwin")) {
+        if (NAME.startsWith("mac") || NAME.contains("darwin")) {
             return MACOS;
         }
         return LINUX;
+    }
+
+    public static boolean isSupported() {
+        return NAME.startsWith("windows") || NAME.startsWith("mac") || NAME.contains("darwin") || NAME.startsWith("linux");
+    }
+
+    public static String rawName() {
+        return System.getProperty("os.name", "unknown");
     }
 
     public static boolean isArm64() {

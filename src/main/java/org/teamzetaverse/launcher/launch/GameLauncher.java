@@ -85,8 +85,10 @@ public final class GameLauncher {
             command.add(game.loggingArgument());
         }
         if (instance.extraJvmArgs != null && !instance.extraJvmArgs.isBlank()) {
-            for (String argument : instance.extraJvmArgs.trim().split("\\s+")) {
-                command.add(argument);
+            try {
+                command.addAll(org.teamzetaverse.launcher.util.CommandLine.split(instance.extraJvmArgs));
+            } catch (IllegalArgumentException e) {
+                throw new IOException("The extra Java arguments for " + instance.name + " are invalid: " + e.getMessage());
             }
         }
 

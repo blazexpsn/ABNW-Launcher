@@ -19,6 +19,7 @@ import org.teamzetaverse.launcher.util.Json;
 public final class InstanceArchive {
     private static final Set<String> SKIPPED = Set.of("logs", "crash-reports", "debug", ".fabric", "natives");
     private static final long MAX_UNPACKED = 8L * 1024 * 1024 * 1024;
+    private static final int MAX_INSTANCE_FILE = 1024 * 1024;
 
     private InstanceArchive() {
     }
@@ -69,7 +70,11 @@ public final class InstanceArchive {
             ZipEntry entry;
             while ((entry = zip.getNextEntry()) != null) {
                 if (entry.getName().equals(Instance.FILE)) {
-                    Instance instance = Json.GSON.fromJson(new String(zip.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8), Instance.class);
+                    byte[] bytes = zip.readNBytes(MAX_INSTANCE_FILE + 1);
+                    if (bytes.length > MAX_INSTANCE_FILE) {
+                        throw new IOException("This .abnw file's instance.json is larger than " + MAX_INSTANCE_FILE / 1024 + " KB.");
+                    }
+                    Instance instance = Json.GSON.fromJson(new String(bytes, java.nio.charset.StandardCharsets.UTF_8), Instance.class);
                     if (instance == null || instance.release == null) {
                         break;
                     }

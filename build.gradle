@@ -87,8 +87,33 @@ tasks.shadowJar {
 	}
 }
 
+def linuxZip = tasks.register("linuxZip", Zip) {
+	group = "distribution"
+	description = "Packages the launcher jar with launch.sh and the Java install scripts for Linux."
+	def folder = "abnw-launcher-${version}"
+	archiveBaseName.set("abnw-launcher")
+	archiveClassifier.set("linux")
+	destinationDirectory.set(layout.buildDirectory.dir("distributions"))
+	into(folder) {
+		from(tasks.shadowJar)
+		from(files("LICENSE", "THIRD-PARTY-NOTICES.md"))
+	}
+	into(folder) {
+		from("linux") {
+			include("**/*.sh")
+		}
+		filter(org.apache.tools.ant.filters.FixCrLfFilter, eol: org.apache.tools.ant.filters.FixCrLfFilter.CrLf.newInstance("lf"))
+		filePermissions {
+			unix("rwxr-xr-x")
+		}
+	}
+	dirPermissions {
+		unix("rwxr-xr-x")
+	}
+}
+
 tasks.build {
-	dependsOn tasks.shadowJar
+	dependsOn tasks.shadowJar, linuxZip
 }
 
 tasks.named("run", JavaExec) {

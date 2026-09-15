@@ -45,15 +45,20 @@ public final class Hashing {
     }
 
     public static boolean matches(final Path file, final String algorithm, final String expected, final long size) throws IOException {
+        requireHash(expected, file.toString());
         if (!Files.isRegularFile(file)) {
             return false;
         }
         if (size >= 0 && Files.size(file) != size) {
             return false;
         }
-        if (expected == null || expected.isEmpty()) {
-            return true;
-        }
         return digest(file, algorithm).equalsIgnoreCase(expected);
+    }
+
+    public static String requireHash(final String expected, final String what) throws IOException {
+        if (expected == null || !expected.matches("[0-9a-fA-F]{40}|[0-9a-fA-F]{64}")) {
+            throw new IOException("Refusing to use " + what + " without a SHA-1 or SHA-256 to verify it against.");
+        }
+        return expected;
     }
 }

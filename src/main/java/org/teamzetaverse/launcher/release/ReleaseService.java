@@ -80,13 +80,17 @@ public final class ReleaseService {
         return ref;
     }
 
+    private static final long MAX_METADATA_BYTES = 8L * 1024 * 1024;
+
     private static String fetchVerified(final Release.FileRef ref) throws IOException {
-        String text = Http.getString(ref.url);
-        if (ref.sha256 != null && !ref.sha256.isEmpty()
-            && !Hashing.sha256(text.getBytes(StandardCharsets.UTF_8)).equalsIgnoreCase(ref.sha256)) {
+        if (!Release.isSha256(ref.sha256)) {
+            throw new IOException("Refusing to read " + ref.url + " without a SHA-256 to verify it against.");
+        }
+        byte[] bytes = Http.getBytes(ref.url, MAX_METADATA_BYTES);
+        if (!Hashing.sha256(bytes).equalsIgnoreCase(ref.sha256)) {
             throw new IOException("Checksum mismatch for " + ref.url);
         }
-        return text;
+        return new String(bytes, StandardCharsets.UTF_8);
     }
 
     public static void checkListed(final Release release) throws IOException {
@@ -98,6 +102,12 @@ public final class ReleaseService {
             if (ref == null || ref.url == null || !ref.url.startsWith(prefix)) {
                 throw new IOException("release " + release.id + " links outside " + prefix);
             }
+        }
+        if (!Release.isSha256(release.manifest.sha256)) {
+            throw new IOException("release " + release.id + " lists its manifest without a SHA-256");
+        }
+        if (!Release.isSha256(release.libraries.sha256)) {
+            throw new IOException("release " + release.id + " lists its libraries without a SHA-256");
         }
     }
 }

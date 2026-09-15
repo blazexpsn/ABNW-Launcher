@@ -8,6 +8,7 @@ import imgui.ImGui;
 import imgui.flag.ImDrawFlags;
 import imgui.flag.ImGuiMouseCursor;
 import java.util.List;
+import org.teamzetaverse.launcher.feed.Changelog;
 import org.teamzetaverse.launcher.feed.Feed;
 
 final class NewsPage {
@@ -17,6 +18,9 @@ final class NewsPage {
         this.ui = ui;
     }
 
+    private static final String[] TABS = {"News", "ABNW changelog", "Launcher changelog"};
+    private int tab;
+
     void draw() {
         float full = ImGui.getContentRegionAvailX();
         float width = Math.min(full, px(880));
@@ -24,6 +28,17 @@ final class NewsPage {
         ImGui.setCursorPosX(ImGui.getCursorPosX() + offset);
         ImGui.beginGroup();
         Widgets.pageHeader("News & updates", "What's new in A Brand New World, straight from the team.");
+        this.tab = Widgets.segmented("news-tabs", TABS, this.tab, Math.min(width, px(520)));
+        ImGui.dummy(0, px(10));
+        switch (this.tab) {
+            case 1 -> this.drawChangelog("abnw", this.ui.abnwChangelog, width, "ABNW");
+            case 2 -> this.drawChangelog("launcher", this.ui.launcherChangelog, width, "Launcher");
+            default -> this.drawNews(width);
+        }
+        ImGui.endGroup();
+    }
+
+    private void drawNews(final float width) {
         List<Feed.News> news = this.ui.feed.news;
         if (news.isEmpty()) {
             if (Widgets.beginCard("news-empty", width, 0, Theme.SURFACE, px(32), px(32))) {
@@ -36,7 +51,72 @@ final class NewsPage {
             this.card("news-" + i, news.get(i), width, i == 0);
             ImGui.dummy(0, px(8));
         }
-        ImGui.endGroup();
+    }
+
+    private void drawChangelog(final String id, final Changelog changelog, final float width, final String product) {
+        if (changelog.entries.isEmpty()) {
+            if (Widgets.beginCard(id + "-empty", width, 0, Theme.SURFACE, px(32), px(32))) {
+                Widgets.cardTitle(Icons.Icon.CLOCK, "No changes listed yet");
+                Widgets.textWrapped(Fonts.body, Theme.MUTED, "The " + product + " changelog will appear here with the next update.");
+            }
+            Widgets.endCard();
+            return;
+        }
+        for (int i = 0; i < changelog.entries.size(); i++) {
+            this.changelogCard(id + "-" + i, changelog.entries.get(i), width, i == 0);
+            ImGui.dummy(0, px(8));
+        }
+    }
+
+    private void changelogCard(final String id, final Changelog.Entry entry, final float width, final boolean latest) {
+        float pad = px(26);
+        float textWidth = width - pad * 2;
+        float bulletIndent = px(20);
+        float pillHeight = px(22);
+        float titleHeight = entry.title.isEmpty() ? 0 : Widgets.textHeight(Fonts.heading, entry.title, textWidth);
+        float[] changeHeights = new float[entry.changes.size()];
+        float changesHeight = 0;
+        for (int i = 0; i < changeHeights.length; i++) {
+            changeHeights[i] = Widgets.textHeight(Fonts.body, entry.changes.get(i), textWidth - bulletIndent);
+            changesHeight += changeHeights[i] + px(6);
+        }
+        float h = pad + pillHeight + (titleHeight > 0 ? px(12) + titleHeight : 0) + (changesHeight > 0 ? px(12) + changesHeight : 0) + pad;
+
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        ImDrawList dl = ImGui.getWindowDrawList();
+        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.SURFACE), px(20));
+        dl.addRect(x, y, x + width, y + h, u32(latest ? Theme.EMBER_LO : Theme.BORDER_SOFT), px(20), 0, px(1));
+        float cx = x + pad;
+        float cy = y + pad;
+        String version = "v" + (entry.version.startsWith("v") ? entry.version.substring(1) : entry.version);
+        Widgets.drawPill(dl, cx, cy, version, Theme.EMBER, Theme.EMBER, 0.14f, Icons.Icon.SPARK);
+        float pillX = cx + Widgets.pillWidth(version, Icons.Icon.SPARK) + px(8);
+        String date = Format.date(entry.date);
+        if (!date.isEmpty()) {
+            Widgets.drawPill(dl, pillX, cy, date, Theme.MUTED, 0xFFFFFF, 0.06f, Icons.Icon.CLOCK);
+            pillX += Widgets.pillWidth(date, Icons.Icon.CLOCK) + px(8);
+        }
+        if (latest) {
+            Widgets.drawPill(dl, pillX, cy, "Latest", Theme.SUN, Theme.SUN, 0.13f, null);
+        }
+        cy += pillHeight;
+        if (titleHeight > 0) {
+            cy += px(12);
+            Widgets.drawTextWrapped(dl, Fonts.heading, cx, cy, u32(Theme.TEXT), entry.title, textWidth);
+            cy += titleHeight;
+        }
+        if (changesHeight > 0) {
+            cy += px(12);
+            for (int i = 0; i < changeHeights.length; i++) {
+                float dot = px(5);
+                dl.addCircleFilled(cx + px(6), cy + Fonts.body.size() * 0.5f + px(1), dot * 0.5f, u32(Theme.EMBER));
+                Widgets.drawTextWrapped(dl, Fonts.body, cx + bulletIndent, cy, u32(Theme.MUTED), entry.changes.get(i), textWidth - bulletIndent);
+                cy += changeHeights[i] + px(6);
+            }
+        }
+        ImGui.setCursorScreenPos(x, y);
+        ImGui.dummy(width, h);
     }
 
     private void card(final String id, final Feed.News item, final float width, final boolean featured) {

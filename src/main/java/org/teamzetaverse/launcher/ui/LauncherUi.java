@@ -88,7 +88,9 @@ public final class LauncherUi {
     private final Map<String, long[]> installCache = new HashMap<>();
     private final long openedAt = System.currentTimeMillis() / 1000L;
 
-    Feed feed = FeedService.bundled();
+    Feed feed = Feed.empty();
+    org.teamzetaverse.launcher.feed.Changelog launcherChangelog = org.teamzetaverse.launcher.feed.Changelog.empty();
+    org.teamzetaverse.launcher.feed.Changelog abnwChangelog = org.teamzetaverse.launcher.feed.Changelog.empty();
     UpdateChecker.Status updateStatus = UpdateChecker.Status.pending();
     volatile boolean checkingUpdates;
     String selectedInstanceId;
@@ -115,7 +117,7 @@ public final class LauncherUi {
         this.instancesPage = new InstancesPage(this);
         this.newsPage = new NewsPage(this);
         this.settingsPage = new SettingsPage(this);
-        this.applyFeed(this.feed);
+        this.applyFeed(FeedService.bundled());
 
         this.background.scheduleWithFixedDelay(this::refreshFeed, 0, 30, TimeUnit.MINUTES);
         this.background.scheduleWithFixedDelay(this::runUpdateCheck, 2, 30 * 60, TimeUnit.SECONDS);
@@ -136,6 +138,7 @@ public final class LauncherUi {
 
     public void shutdown() {
         this.config.save();
+        this.accounts.flush();
         this.background.shutdownNow();
         this.discord.close();
         this.tasks.shutdown();
@@ -745,14 +748,17 @@ public final class LauncherUi {
     private void refreshFeed() {
         try {
             FeedService.Loaded loaded = this.feedService.load();
-            this.tasks.onUi(() -> this.applyFeed(loaded.feed()));
+            this.tasks.onUi(() -> this.applyFeed(loaded));
         } catch (RuntimeException e) {
             System.err.println("Feed refresh failed: " + e);
         }
     }
 
-    private void applyFeed(final Feed next) {
+    private void applyFeed(final FeedService.Loaded loaded) {
+        Feed next = loaded.news();
         this.feed = next;
+        this.launcherChangelog = loaded.launcherChangelog();
+        this.abnwChangelog = loaded.abnwChangelog();
         this.announcements.setFeed(next.announcements, Desktop::browse);
         List<Showcase.Slide> slides = new ArrayList<>();
         for (Feed.Screenshot shot : next.screenshots) {

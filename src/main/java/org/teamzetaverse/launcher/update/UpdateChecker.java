@@ -73,27 +73,74 @@ public final class UpdateChecker {
     }
 
     public static int compare(final String a, final String b) {
-        String[] left = stripPrefix(a).split("[^0-9]+");
-        String[] right = stripPrefix(b).split("[^0-9]+");
-        int length = Math.max(left.length, right.length);
+        String left = stripBuild(stripPrefix(a));
+        String right = stripBuild(stripPrefix(b));
+        int dashLeft = left.indexOf('-');
+        int dashRight = right.indexOf('-');
+        String coreLeft = dashLeft < 0 ? left : left.substring(0, dashLeft);
+        String coreRight = dashRight < 0 ? right : right.substring(0, dashRight);
+        int byCore = compareCore(coreLeft, coreRight);
+        if (byCore != 0) {
+            return byCore;
+        }
+        String preLeft = dashLeft < 0 ? null : left.substring(dashLeft + 1);
+        String preRight = dashRight < 0 ? null : right.substring(dashRight + 1);
+        if (preLeft == null || preRight == null) {
+            return preLeft == null ? (preRight == null ? 0 : 1) : -1;
+        }
+        return comparePrerelease(preLeft, preRight);
+    }
+
+    private static String stripBuild(final String version) {
+        int plus = version.indexOf('+');
+        return plus < 0 ? version : version.substring(0, plus);
+    }
+
+    private static int compareCore(final String left, final String right) {
+        String[] l = left.split("\\.");
+        String[] r = right.split("\\.");
+        int length = Math.max(l.length, r.length);
         for (int i = 0; i < length; i++) {
-            long l = i < left.length ? parse(left[i]) : 0;
-            long r = i < right.length ? parse(right[i]) : 0;
-            if (l != r) {
-                return Long.compare(l, r);
+            long lv = i < l.length ? parseNumber(l[i]) : 0L;
+            long rv = i < r.length ? parseNumber(r[i]) : 0L;
+            if (lv != rv) {
+                return Long.compare(lv, rv);
             }
         }
         return 0;
     }
 
-    private static long parse(final String part) {
-        if (part.isEmpty()) {
-            return 0;
+    private static int comparePrerelease(final String left, final String right) {
+        String[] l = left.split("[.-]");
+        String[] r = right.split("[.-]");
+        int length = Math.min(l.length, r.length);
+        for (int i = 0; i < length; i++) {
+            boolean ln = l[i].matches("\\d+");
+            boolean rn = r[i].matches("\\d+");
+            int result;
+            if (ln && rn) {
+                result = Long.compare(parseNumber(l[i]), parseNumber(r[i]));
+            } else if (ln != rn) {
+                result = ln ? -1 : 1;
+            } else {
+                result = l[i].compareToIgnoreCase(r[i]);
+            }
+            if (result != 0) {
+                return result;
+            }
+        }
+        return Integer.compare(l.length, r.length);
+    }
+
+    private static long parseNumber(final String part) {
+        String digits = part.replaceAll("[^0-9].*$", "");
+        if (digits.isEmpty()) {
+            return 0L;
         }
         try {
-            return Long.parseLong(part);
+            return Long.parseLong(digits);
         } catch (NumberFormatException e) {
-            return 0;
+            return Long.MAX_VALUE;
         }
     }
 }

@@ -6,12 +6,17 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import org.teamzetaverse.launcher.ui.LauncherUi;
 import org.teamzetaverse.launcher.ui.LauncherWindow;
+import org.teamzetaverse.launcher.util.OperatingSystem;
 
 public final class LauncherMain {
     private LauncherMain() {
     }
 
     public static void main(final String[] args) {
+        if (!OperatingSystem.isSupported()) {
+            refuseUnsupportedSystem();
+            return;
+        }
         LauncherPaths paths = LauncherPaths.defaultLocation();
         try {
             Files.createDirectories(paths.root());
@@ -27,6 +32,13 @@ public final class LauncherMain {
 
         LauncherConfig config = LauncherConfig.load(paths);
         new LauncherWindow().run(new LauncherUi(paths, config));
+    }
+
+    private static void refuseUnsupportedSystem() {
+        String message = "The ABNW Launcher runs on Windows, macOS and Linux. This system reports itself as \""
+            + OperatingSystem.rawName() + "\", which is not supported.";
+        System.err.println(message);
+        System.exit(1);
     }
 
     private static final class TeePrintStream extends PrintStream {

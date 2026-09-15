@@ -47,7 +47,7 @@ public final class GameInstaller {
         Path clientJar = versionDir.resolve(Release.safe(mc) + ".jar");
         if (!Hashing.matches(clientJar, "SHA-1", Json.string(client, "sha1"), Json.number(client, "size", -1))) {
             progress.stage("Downloading Minecraft " + mc, Json.number(client, "size", -1));
-            Http.download(Json.string(client, "url"), clientJar, Json.string(client, "sha1"), progress::advance);
+            Http.download(Json.string(client, "url"), clientJar, Json.string(client, "sha1"), progress::advance, progress::isCancelled);
         }
         progress.checkCancelled();
 
@@ -135,6 +135,10 @@ public final class GameInstaller {
             if (!Rules.allowed(library.getAsJsonArray("rules"), Map.of())) {
                 continue;
             }
+            if (library.has("natives")) {
+                throw new IOException("Minecraft library " + Json.string(library, "name")
+                    + " uses the legacy natives format, which this launcher does not install.");
+            }
             JsonObject artifact = Json.object(Json.object(library, "downloads"), "artifact");
             if (artifact == null) {
                 continue;
@@ -152,43 +156,66 @@ public final class GameInstaller {
             return;
         }
         progress.stage("Resolving ABNW libraries...", 0);
+        java.util.Set<String> plainNames = new java.util.HashSet<>();
+        for (JsonElement element : list) {
+            JsonObject library = element.getAsJsonObject();
+            if (!library.has("natives") && Json.string(library, "name") != null) {
+                plainNames.add(Json.string(library, "name"));
+            }
+        }
         for (JsonElement element : list) {
             progress.checkCancelled();
             JsonObject library = element.getAsJsonObject();
             String name = Json.string(library, "name");
             String repository = Json.string(library, "url");
             if (name == null || repository == null) {
-                continue;
+                throw new IOException("An ABNW library entry is missing its name or repository.");
             }
             String[] parts = name.split(":");
             if (parts.length < 3) {
+                throw new IOException("ABNW library " + name + " is not group:artifact:version.");
+            }
+            JsonObject natives = Json.object(library, "natives");
+            if (natives == null) {
+                this.addReleaseLibrary(library, parts, repository, parts.length > 3 ? parts[3] : null, libraries, downloads);
                 continue;
             }
-            String classifier = parts.length > 3 ? parts[3] : null;
-            JsonObject natives = Json.object(library, "natives");
-            if (natives != null) {
-                String key = OperatingSystem.CURRENT.mojangName + (OperatingSystem.isArm64() ? "-arm64" : "");
-                classifier = Json.string(natives, key);
-                if (classifier == null) {
-                    continue;
-                }
+            String key = OperatingSystem.CURRENT.mojangName + (OperatingSystem.isArm64() ? "-arm64" : "");
+            String classifier = Json.string(natives, key);
+            if (classifier == null) {
+                continue;
             }
-            String relative = parts[0].replace('.', '/') + "/" + parts[1] + "/" + parts[2] + "/" + parts[1] + "-" + parts[2]
-                + (classifier == null ? "" : "-" + classifier) + ".jar";
-            String url = (repository.endsWith("/") ? repository : repository + "/") + relative;
-            Path target = this.libraryPath(relative);
-            String sha1 = null;
-            if (!Files.isRegularFile(target)) {
-                try {
-                    sha1 = Http.getString(url + ".sha1").trim().split("\\s+")[0];
-                } catch (IOException ignored) {
-                }
+            if (!plainNames.contains(name)) {
+                this.addReleaseLibrary(library, parts, repository, null, libraries, downloads);
             }
-            downloads.add(url, target, sha1, -1);
-            String group = parts[0] + ":" + parts[1] + (classifier == null ? "" : ":" + classifier);
-            libraries.remove(group);
-            libraries.put(group, target);
+            this.addReleaseLibrary(library, parts, repository, classifier, libraries, downloads);
         }
+    }
+
+    private void addReleaseLibrary(final JsonObject library, final String[] parts, final String repository, final String classifier,
+                                   final Map<String, Path> libraries, final Downloads downloads) throws IOException {
+        String relative = parts[0].replace('.', '/') + "/" + parts[1] + "/" + parts[2] + "/" + parts[1] + "-" + parts[2]
+            + (classifier == null ? "" : "-" + classifier) + ".jar";
+        String url = (repository.endsWith("/") ? repository : repository + "/") + relative;
+        Path target = this.libraryPath(relative);
+        JsonObject downloadsInfo = Json.object(library, "downloads");
+        JsonObject info = classifier == null
+            ? Json.object(downloadsInfo, "artifact")
+            : Json.object(Json.object(downloadsInfo, "classifiers"), classifier);
+        String sha1 = info == null ? null : Json.string(info, "sha1");
+        long size = info == null ? -1 : Json.number(info, "size", -1);
+        if (sha1 == null) {
+            try {
+                sha1 = Http.getString(url + ".sha1").trim().split("\\s+")[0];
+            } catch (IOException e) {
+                throw new IOException("No checksum for ABNW library " + relative + ": the release lists none and " + url + ".sha1 could not be read.", e);
+            }
+        }
+        Hashing.requireHash(sha1, relative);
+        downloads.add(url, target, sha1, size);
+        String group = parts[0] + ":" + parts[1] + (classifier == null ? "" : ":" + classifier);
+        libraries.remove(group);
+        libraries.put(group, target);
     }
 
     private Path libraryPath(final String relative) throws IOException {
@@ -213,6 +240,14 @@ public final class GameInstaller {
             Path configured = Path.of(this.config.javaPath.trim());
             if (!Files.isRegularFile(configured)) {
                 throw new IOException("The Java path in Settings does not exist: " + configured);
+            }
+            int required = (int)Json.number(Json.object(versionJson, "javaVersion"), "majorVersion", 0);
+            if (required > 0) {
+                int actual = JavaRuntimes.majorVersion(configured);
+                if (actual < required) {
+                    throw new IOException("Minecraft needs Java " + required + ", but the Java in Settings is Java " + actual
+                        + " (" + configured + "). Choose Java " + required + " or newer, or clear the setting to let ABNW download it.");
+                }
             }
             return configured;
         }

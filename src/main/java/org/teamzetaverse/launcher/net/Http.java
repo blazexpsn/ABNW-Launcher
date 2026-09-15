@@ -11,15 +11,17 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.function.BooleanSupplier;
 import java.util.function.LongConsumer;
 import org.teamzetaverse.launcher.BuildInfo;
+import org.teamzetaverse.launcher.util.FileMoves;
+import org.teamzetaverse.launcher.util.Hashing;
 import org.teamzetaverse.launcher.util.Json;
 
 public final class Http {
@@ -67,8 +69,14 @@ public final class Http {
     }
 
     public static byte[] getBytes(final String url, final long maxBytes) throws IOException {
+        return getBytes(url, maxBytes, Map.of());
+    }
+
+    public static byte[] getBytes(final String url, final long maxBytes, final Map<String, String> headers) throws IOException {
         try {
-            HttpResponse<InputStream> response = CLIENT.send(request(url).GET().build(), HttpResponse.BodyHandlers.ofInputStream());
+            HttpRequest.Builder builder = request(url).GET();
+            headers.forEach(builder::header);
+            HttpResponse<InputStream> response = CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofInputStream());
             try (InputStream in = response.body()) {
                 if (response.statusCode() / 100 != 2) {
                     throw new StatusException(url, response.statusCode(), "");
@@ -111,35 +119,65 @@ public final class Http {
             .build()));
     }
 
+    public static final class CancelledDownloadException extends IOException {
+        public CancelledDownloadException(final String url) {
+            super("Download cancelled: " + url);
+        }
+    }
+
     public static void download(final String url, final Path target, final String expectedHash, final LongConsumer bytesRead) throws IOException {
+        download(url, target, expectedHash, bytesRead, () -> false);
+    }
+
+    public static void download(final String url, final Path target, final String expectedHash, final LongConsumer bytesRead,
+                                final BooleanSupplier cancelled) throws IOException {
+        Hashing.requireHash(expectedHash, url);
         IOException last = null;
         for (int attempt = 1; attempt <= ATTEMPTS; attempt++) {
+            long[] counted = {0L};
+            LongConsumer tracked = bytesRead == null ? null : read -> {
+                counted[0] += read;
+                bytesRead.accept(read);
+            };
             try {
-                downloadOnce(url, target, expectedHash, bytesRead);
+                downloadOnce(url, target, expectedHash, tracked, cancelled);
                 return;
+            } catch (CancelledDownloadException e) {
+                rollBack(bytesRead, counted[0]);
+                throw e;
             } catch (StatusException e) {
+                rollBack(bytesRead, counted[0]);
                 if (e.status == 404 || e.status == 403) {
                     throw e;
                 }
                 last = e;
             } catch (IOException e) {
+                rollBack(bytesRead, counted[0]);
                 last = e;
+            }
+            if (cancelled.getAsBoolean()) {
+                throw new CancelledDownloadException(url);
             }
         }
         throw last;
     }
 
-    private static void downloadOnce(final String url, final Path target, final String expectedHash, final LongConsumer bytesRead) throws IOException {
+    private static void rollBack(final LongConsumer bytesRead, final long counted) {
+        if (bytesRead != null && counted != 0L) {
+            bytesRead.accept(-counted);
+        }
+    }
+
+    private static void downloadOnce(final String url, final Path target, final String expectedHash, final LongConsumer bytesRead,
+                                     final BooleanSupplier cancelled) throws IOException {
         Files.createDirectories(target.toAbsolutePath().getParent());
         Path temp = target.resolveSibling(target.getFileName() + ".part");
-        String algorithm = expectedHash == null || expectedHash.isEmpty() ? null : expectedHash.length() == 40 ? "SHA-1" : "SHA-256";
-        MessageDigest digest = null;
-        if (algorithm != null) {
-            try {
-                digest = MessageDigest.getInstance(algorithm);
-            } catch (NoSuchAlgorithmException e) {
-                throw new IllegalStateException(e);
-            }
+        String algorithm = expectedHash.length() == 40 ? "SHA-1" : "SHA-256";
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance(algorithm);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
         try {
             HttpResponse<InputStream> response = CLIENT.send(request(url).GET().build(), HttpResponse.BodyHandlers.ofInputStream());
@@ -151,25 +189,24 @@ public final class Http {
                 byte[] buffer = new byte[1 << 16];
                 int read;
                 while ((read = in.read(buffer)) > 0) {
-                    out.write(buffer, 0, read);
-                    if (digest != null) {
-                        digest.update(buffer, 0, read);
+                    if (cancelled.getAsBoolean()) {
+                        throw new CancelledDownloadException(url);
                     }
+                    out.write(buffer, 0, read);
+                    digest.update(buffer, 0, read);
                     if (bytesRead != null) {
                         bytesRead.accept(read);
                     }
                 }
             }
-            if (digest != null) {
-                String actual = HexFormat.of().formatHex(digest.digest());
-                if (!actual.equalsIgnoreCase(expectedHash)) {
-                    throw new IOException("checksum mismatch for " + url + " (expected " + expectedHash + ", got " + actual + ")");
-                }
+            String actual = HexFormat.of().formatHex(digest.digest());
+            if (!actual.equalsIgnoreCase(expectedHash)) {
+                throw new IOException("checksum mismatch for " + url + " (expected " + expectedHash + ", got " + actual + ")");
             }
-            Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            FileMoves.replace(temp, target);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new IOException("interrupted", e);
+            throw new CancelledDownloadException(url);
         } finally {
             Files.deleteIfExists(temp);
         }

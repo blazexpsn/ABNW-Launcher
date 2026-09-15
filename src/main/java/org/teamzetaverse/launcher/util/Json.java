@@ -49,7 +49,7 @@ public final class Json {
         Files.createDirectories(file.toAbsolutePath().getParent());
         Path temp = file.resolveSibling(file.getFileName() + ".tmp");
         Files.writeString(temp, text, StandardCharsets.UTF_8);
-        Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        FileMoves.replace(temp, file);
     }
 
     public static String string(final JsonObject object, final String key) {
