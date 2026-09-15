@@ -72,6 +72,7 @@ public final class AccountStore {
                 account.msaRefreshToken = valueOr(Json.string(secret, "msaRefreshToken"));
                 account.minecraftToken = valueOr(Json.string(secret, "minecraftToken"));
                 account.minecraftTokenExpiry = Json.number(secret, "minecraftTokenExpiry", 0L);
+                account.cosmeticsToken = valueOr(Json.string(secret, "cosmeticsToken"));
             }
             if (!account.msaRefreshToken.isEmpty()) {
                 this.accounts.add(account);
@@ -133,6 +134,7 @@ public final class AccountStore {
             secret.addProperty("msaRefreshToken", account.msaRefreshToken);
             secret.addProperty("minecraftToken", account.minecraftToken);
             secret.addProperty("minecraftTokenExpiry", account.minecraftTokenExpiry);
+            secret.addProperty("cosmeticsToken", account.cosmeticsToken == null ? "" : account.cosmeticsToken);
             perAccount.add(account.uuid, secret);
         }
         all.addProperty("formatVersion", 1);

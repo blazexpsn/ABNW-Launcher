@@ -8,7 +8,7 @@ final class Icons {
     enum Icon {
         HOME, INSTANCES, NEWS, SETTINGS, PLAY, STOP, PLUS, IMPORT, EXPORT, FOLDER, TRASH, EDIT, USER, CLOSE,
         CHEVRON_LEFT, CHEVRON_RIGHT, CHEVRON_DOWN, REFRESH, CHECK, TERMINAL, SPARK, MEGAPHONE, CLOCK, IMAGE,
-        LOGOUT, EXTERNAL, ALERT, COPY, CHIP, COFFEE, WRENCH, CUBE, DISCORD_WAVE, DOWNLOAD, SWAP
+        LOGOUT, EXTERNAL, ALERT, COPY, CHIP, COFFEE, WRENCH, CUBE, DISCORD_WAVE, DOWNLOAD, SWAP, CROWN, HEART
     }
 
     private static final float PI = (float)Math.PI;
@@ -190,6 +190,23 @@ final class Icons {
                 poly(dl, x, y, u, color, t, false, 15, 5, 18.5f, 8.5f, 15, 12);
                 poly(dl, x, y, u, color, t, false, 20, 15.5f, 5.5f, 15.5f);
                 poly(dl, x, y, u, color, t, false, 9, 12, 5.5f, 15.5f, 9, 19);
+            }
+            case CROWN -> {
+                poly(dl, x, y, u, color, t, true, 3.5f, 17.5f, 3, 7.5f, 8.2f, 11.8f, 12, 4.5f, 15.8f, 11.8f, 21, 7.5f, 20.5f, 17.5f);
+                line(dl, x, y, u, color, t, 4.5f, 20.5f, 19.5f, 20.5f);
+                dl.addCircleFilled(x + 12 * u, y + 13.8f * u, 1.5f * u, color);
+            }
+            case HEART -> {
+                float[] points = new float[64];
+                for (int i = 0; i < 32; i++) {
+                    double a = i * Math.PI * 2 / 32;
+                    double sin = Math.sin(a);
+                    double hx = 16 * sin * sin * sin;
+                    double hy = 13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a);
+                    points[i * 2] = (float)(12 + hx * 0.52);
+                    points[i * 2 + 1] = (float)(11.2 - hy * 0.52);
+                }
+                poly(dl, x, y, u, color, t, true, points);
             }
         }
     }

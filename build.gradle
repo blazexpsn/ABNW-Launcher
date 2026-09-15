@@ -60,6 +60,8 @@ def buildInfo = [
 		launcherBranch    : prop("launcher_branch"),
 		msaClientId: prop("msa_client_id"),
 		discordClientId   : prop("discord_client_id"),
+		cosmeticsApiUrl   : launcher.getProperty("cosmetics_api_url", "").trim(),
+		patreonPageUrl    : launcher.getProperty("patreon_page_url", "").trim(),
 ]
 
 tasks.processResources {

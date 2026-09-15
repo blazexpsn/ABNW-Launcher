@@ -12,6 +12,8 @@ public final class BuildInfo {
     public static final String LAUNCHER_BRANCH;
     public static final String MSA_CLIENT_ID;
     public static final String DISCORD_CLIENT_ID;
+    public static final String COSMETICS_API_URL;
+    public static final String PATREON_PAGE_URL;
 
     static {
         Properties properties = new Properties();
@@ -28,6 +30,8 @@ public final class BuildInfo {
         LAUNCHER_BRANCH = clean(properties.getProperty("launcherBranch"), "main");
         MSA_CLIENT_ID = clean(properties.getProperty("msaClientId"), "");
         DISCORD_CLIENT_ID = clean(properties.getProperty("discordClientId"), "");
+        COSMETICS_API_URL = httpsOrEmpty(clean(System.getProperty("abnw.cosmeticsApiUrl", properties.getProperty("cosmeticsApiUrl")), ""));
+        PATREON_PAGE_URL = httpsOrEmpty(clean(properties.getProperty("patreonPageUrl"), ""));
     }
 
     private BuildInfo() {
@@ -38,6 +42,18 @@ public final class BuildInfo {
             return fallback;
         }
         return value.trim();
+    }
+
+    private static String httpsOrEmpty(final String value) {
+        boolean local = value.startsWith("http://localhost:") || value.startsWith("http://127.0.0.1:");
+        if (!value.startsWith("https://") && !local) {
+            return "";
+        }
+        return value.endsWith("/") ? value.substring(0, value.length() - 1) : value;
+    }
+
+    public static boolean cosmeticsConfigured() {
+        return !COSMETICS_API_URL.isEmpty();
     }
 
     public static boolean isDevBuild() {

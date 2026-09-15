@@ -48,7 +48,7 @@ import org.teamzetaverse.launcher.update.UpdateChecker;
 
 public final class LauncherUi {
     enum Page {
-        HOME, INSTANCES, NEWS, SETTINGS
+        HOME, INSTANCES, NEWS, COSMETICS, SETTINGS
     }
 
     enum InstallState {
@@ -73,6 +73,7 @@ public final class LauncherUi {
     final DiscordPresence discord;
     final List<String> errors = new ArrayList<>();
     final Dialogs dialogs;
+    final org.teamzetaverse.launcher.cosmetics.CosmeticsClient cosmetics = new org.teamzetaverse.launcher.cosmetics.CosmeticsClient();
 
     private final FeedService feedService;
     private final UpdateChecker updateChecker;
@@ -84,6 +85,7 @@ public final class LauncherUi {
     private final HomePage home;
     private final InstancesPage instancesPage;
     private final NewsPage newsPage;
+    private final CosmeticsPage cosmeticsPage;
     private final SettingsPage settingsPage;
     private final Map<String, long[]> installCache = new HashMap<>();
     private final long openedAt = System.currentTimeMillis() / 1000L;
@@ -116,6 +118,7 @@ public final class LauncherUi {
         this.home = new HomePage(this);
         this.instancesPage = new InstancesPage(this);
         this.newsPage = new NewsPage(this);
+        this.cosmeticsPage = new CosmeticsPage(this);
         this.settingsPage = new SettingsPage(this);
         this.applyFeed(FeedService.bundled());
 
@@ -220,6 +223,7 @@ public final class LauncherUi {
             String count = this.instances.all().isEmpty() ? null : String.valueOf(this.instances.all().size());
             this.navItem(Page.INSTANCES, Icons.Icon.INSTANCES, "Instances", count);
             this.navItem(Page.NEWS, Icons.Icon.NEWS, "News", null);
+            this.navItem(Page.COSMETICS, Icons.Icon.CROWN, "Cosmetics", null);
             this.navItem(Page.SETTINGS, Icons.Icon.SETTINGS, "Settings", null);
 
             UpdateChecker.LauncherUpdate update = this.updateStatus.launcherUpdate();
@@ -416,6 +420,7 @@ public final class LauncherUi {
                 case HOME -> this.home.draw();
                 case INSTANCES -> this.instancesPage.draw();
                 case NEWS -> this.newsPage.draw();
+                case COSMETICS -> this.cosmeticsPage.draw();
                 case SETTINGS -> this.settingsPage.draw();
             }
             ImGui.dummy(0, this.tasks.running().isEmpty() ? px(4) : px(90));

@@ -7,6 +7,7 @@ public final class Account {
     public transient String msaRefreshToken = "";
     public transient String minecraftToken = "";
     public transient long minecraftTokenExpiry;
+    public transient String cosmeticsToken = "";
 
     public boolean hasValidMinecraftToken() {
         return this.minecraftToken != null && !this.minecraftToken.isEmpty() && System.currentTimeMillis() < this.minecraftTokenExpiry - 60_000L;

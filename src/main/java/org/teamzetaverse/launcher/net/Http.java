@@ -64,6 +64,30 @@ public final class Http {
         }
     }
 
+    public record Response(int status, String body) {
+        public boolean ok() {
+            return this.status / 100 == 2;
+        }
+    }
+
+    public static Response exchange(final String method, final String url, final String jsonBody, final Map<String, String> headers) throws IOException {
+        HttpRequest.Builder builder = request(url).header("Accept", "application/json");
+        headers.forEach(builder::header);
+        if (jsonBody != null) {
+            builder.header("Content-Type", "application/json");
+            builder.method(method, HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8));
+        } else {
+            builder.method(method, HttpRequest.BodyPublishers.noBody());
+        }
+        try {
+            HttpResponse<String> response = CLIENT.send(builder.build(), HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            return new Response(response.statusCode(), response.body());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted", e);
+        }
+    }
+
     public static String getString(final String url) throws IOException {
         return send(request(url).GET().build());
     }
