@@ -40,7 +40,7 @@ final class Downloads {
                     if (progress.isCancelled()) {
                         return null;
                     }
-                    if (!Hashing.matches(entry.target(), "SHA-1", entry.sha1(), entry.size())) {
+                    if (!Hashing.matches(entry.target(), entry.sha1(), entry.size())) {
                         Http.download(entry.url(), entry.target(), entry.sha1(), null, progress::isCancelled);
                     }
                     progress.advance(1);

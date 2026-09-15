@@ -26,23 +26,7 @@ public final class LauncherWindow {
 
     public void run(final LauncherUi ui) {
         GLFWErrorCallback.createPrint(System.err).set();
-        if (!glfwInit()) {
-            throw new IllegalStateException("Could not initialise GLFW");
-        }
-        glfwDefaultWindowHints();
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        if (OperatingSystem.CURRENT == OperatingSystem.MACOS) {
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-        }
-        glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-
-        this.window = glfwCreateWindow(1320, 840, "ABNW Launcher", MemoryUtil.NULL, MemoryUtil.NULL);
-        if (this.window == MemoryUtil.NULL) {
-            throw new IllegalStateException("Could not create the launcher window (OpenGL 3.2 is required)");
-        }
+        this.window = this.open();
         glfwSetWindowSizeLimits(this.window, 1040, 660, GLFW_DONT_CARE, GLFW_DONT_CARE);
         this.setIcon();
         glfwMakeContextCurrent(this.window);
@@ -97,6 +81,63 @@ public final class LauncherWindow {
         }
     }
 
+    private long open() {
+        int requested = requestedPlatform();
+        long opened = this.tryOpen(requested);
+        if (opened != MemoryUtil.NULL) {
+            return opened;
+        }
+        boolean waylandSession = System.getenv("WAYLAND_DISPLAY") != null || "wayland".equalsIgnoreCase(System.getenv("XDG_SESSION_TYPE"));
+        if (OperatingSystem.CURRENT == OperatingSystem.LINUX && requested == GLFW_ANY_PLATFORM && waylandSession
+            && glfwPlatformSupported(GLFW_PLATFORM_X11)) {
+            System.err.println("The launcher window could not open on Wayland; retrying with X11.");
+            opened = this.tryOpen(GLFW_PLATFORM_X11);
+            if (opened != MemoryUtil.NULL) {
+                return opened;
+            }
+        }
+        throw new IllegalStateException(OperatingSystem.CURRENT == OperatingSystem.LINUX
+            ? "Could not create the launcher window on Wayland or X11 (OpenGL 3.2 is required)"
+            : "Could not create the launcher window (OpenGL 3.2 is required)");
+    }
+
+    private long tryOpen(final int platform) {
+        if (platform != GLFW_ANY_PLATFORM && glfwPlatformSupported(platform)) {
+            glfwInitHint(GLFW_PLATFORM, platform);
+        } else {
+            glfwInitHint(GLFW_PLATFORM, GLFW_ANY_PLATFORM);
+        }
+        if (!glfwInit()) {
+            return MemoryUtil.NULL;
+        }
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        if (OperatingSystem.CURRENT == OperatingSystem.MACOS) {
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+        }
+        glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+        long created = glfwCreateWindow(1320, 840, "ABNW Launcher", MemoryUtil.NULL, MemoryUtil.NULL);
+        if (created == MemoryUtil.NULL) {
+            glfwTerminate();
+        }
+        return created;
+    }
+
+    private static int requestedPlatform() {
+        String value = System.getenv("ABNW_WINDOW_PLATFORM");
+        if (value == null) {
+            return GLFW_ANY_PLATFORM;
+        }
+        return switch (value.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "x11" -> GLFW_PLATFORM_X11;
+            case "wayland" -> GLFW_PLATFORM_WAYLAND;
+            default -> GLFW_ANY_PLATFORM;
+        };
+    }
+
     private float contentScale() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
             var x = stack.mallocFloat(1);
@@ -107,7 +148,7 @@ public final class LauncherWindow {
     }
 
     private void setIcon() {
-        if (OperatingSystem.CURRENT == OperatingSystem.MACOS) {
+        if (OperatingSystem.CURRENT == OperatingSystem.MACOS || glfwGetPlatform() == GLFW_PLATFORM_WAYLAND) {
             return;
         }
         String[] sizes = {"16", "32", "48", "256"};

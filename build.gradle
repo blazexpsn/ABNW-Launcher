@@ -97,6 +97,9 @@ def linuxZip = tasks.register("linuxZip", Zip) {
 	into(folder) {
 		from(tasks.shadowJar)
 		from(files("LICENSE", "THIRD-PARTY-NOTICES.md"))
+		from("linux") {
+			include("LINUX-GUIDE.md")
+		}
 	}
 	into(folder) {
 		from("linux") {

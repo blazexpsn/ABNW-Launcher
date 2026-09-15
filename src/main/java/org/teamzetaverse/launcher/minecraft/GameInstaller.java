@@ -45,7 +45,7 @@ public final class GameInstaller {
 
         JsonObject client = Json.object(Json.object(versionJson, "downloads"), "client");
         Path clientJar = versionDir.resolve(Release.safe(mc) + ".jar");
-        if (!Hashing.matches(clientJar, "SHA-1", Json.string(client, "sha1"), Json.number(client, "size", -1))) {
+        if (!Hashing.matches(clientJar, Json.string(client, "sha1"), Json.number(client, "size", -1))) {
             progress.stage("Downloading Minecraft " + mc, Json.number(client, "size", -1));
             Http.download(Json.string(client, "url"), clientJar, Json.string(client, "sha1"), progress::advance, progress::isCancelled);
         }
@@ -60,7 +60,7 @@ public final class GameInstaller {
         JsonObject assetIndexRef = Json.object(versionJson, "assetIndex");
         String assetIndexId = Json.string(assetIndexRef, "id");
         Path indexPath = this.paths.assets().resolve("indexes").resolve(Release.safe(assetIndexId) + ".json");
-        if (!Hashing.matches(indexPath, "SHA-1", Json.string(assetIndexRef, "sha1"), -1)) {
+        if (!Hashing.matches(indexPath, Json.string(assetIndexRef, "sha1"), -1)) {
             Http.download(Json.string(assetIndexRef, "url"), indexPath, Json.string(assetIndexRef, "sha1"), null);
         }
         JsonObject objects = Json.object(Json.readObject(indexPath), "objects");
@@ -84,7 +84,7 @@ public final class GameInstaller {
         if (logging != null) {
             JsonObject file = Json.object(logging, "file");
             Path config = this.paths.assets().resolve("log_configs").resolve(Release.safe(Json.string(file, "id")));
-            if (!Hashing.matches(config, "SHA-1", Json.string(file, "sha1"), -1)) {
+            if (!Hashing.matches(config, Json.string(file, "sha1"), -1)) {
                 Http.download(Json.string(file, "url"), config, Json.string(file, "sha1"), null);
             }
             String argument = Json.string(logging, "argument");
@@ -119,7 +119,7 @@ public final class GameInstaller {
             throw new IOException("Mojang has no Minecraft " + mc + ".");
         }
         String sha1 = Json.string(entry, "sha1");
-        if (!Hashing.matches(path, "SHA-1", sha1, -1)) {
+        if (!Hashing.matches(path, sha1, -1)) {
             Http.download(Json.string(entry, "url"), path, sha1, null);
         }
         return Json.readObject(path);
@@ -180,15 +180,14 @@ public final class GameInstaller {
                 this.addReleaseLibrary(library, parts, repository, parts.length > 3 ? parts[3] : null, libraries, downloads);
                 continue;
             }
-            String key = OperatingSystem.CURRENT.mojangName + (OperatingSystem.isArm64() ? "-arm64" : "");
-            String classifier = Json.string(natives, key);
-            if (classifier == null) {
-                continue;
-            }
             if (!plainNames.contains(name)) {
                 this.addReleaseLibrary(library, parts, repository, null, libraries, downloads);
             }
-            this.addReleaseLibrary(library, parts, repository, classifier, libraries, downloads);
+            String key = OperatingSystem.CURRENT.mojangName + (OperatingSystem.isArm64() ? "-arm64" : "");
+            String classifier = Json.string(natives, key);
+            if (classifier != null) {
+                this.addReleaseLibrary(library, parts, repository, classifier, libraries, downloads);
+            }
         }
     }
 

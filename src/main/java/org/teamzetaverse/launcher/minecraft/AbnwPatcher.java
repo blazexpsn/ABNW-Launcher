@@ -21,12 +21,12 @@ final class AbnwPatcher {
         throws IOException, Progress.CancelledException {
         Path output = jarsDir.resolve(release.patchedJarName());
         progress.stage("Checking the " + release.displayName() + " jar...", 0);
-        if (Hashing.matches(output, "SHA-256", release.target.sha256, release.target.size)) {
+        if (Hashing.matches(output, release.target.sha256, release.target.size)) {
             return output;
         }
 
         Path delta = deltasDir.resolve(release.deltaFileName());
-        if (!Hashing.matches(delta, "SHA-256", release.delta.sha256, release.delta.size)) {
+        if (!Hashing.matches(delta, release.delta.sha256, release.delta.size)) {
             progress.stage("Downloading the " + release.displayName() + " patch", release.delta.size);
             Http.download(release.delta.url, delta, release.delta.sha256, progress::advance, progress::isCancelled);
         }

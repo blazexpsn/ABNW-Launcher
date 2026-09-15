@@ -54,4 +54,36 @@ if [ -z "$JAVA" ]; then
 fi
 
 cd "$HERE"
-exec "$JAVA" ${ABNW_JAVA_OPTS:-} -jar "$JAR" "$@"
+
+X11_MARKER="$HERE/.use-x11"
+WAYLAND_SESSION=false
+if [ -n "${WAYLAND_DISPLAY:-}" ] || [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+    WAYLAND_SESSION=true
+fi
+
+if [ -n "${ABNW_WINDOW_PLATFORM:-}" ] || [ "$WAYLAND_SESSION" = false ] || [ -z "${DISPLAY:-}" ]; then
+    exec "$JAVA" ${ABNW_JAVA_OPTS:-} -jar "$JAR" "$@"
+fi
+
+if [ -f "$X11_MARKER" ]; then
+    ABNW_WINDOW_PLATFORM=x11 exec "$JAVA" ${ABNW_JAVA_OPTS:-} -jar "$JAR" "$@"
+fi
+
+STARTED="$(date +%s)"
+set +e
+"$JAVA" ${ABNW_JAVA_OPTS:-} -jar "$JAR" "$@"
+STATUS=$?
+set -e
+ELAPSED=$(( $(date +%s) - STARTED ))
+
+case "$STATUS" in
+    134|135|136|139)
+        if [ "$ELAPSED" -lt 30 ]; then
+            echo "The launcher crashed on Wayland; restarting it with X11." >&2
+            echo "X11 will be used from now on. Delete $X11_MARKER to try Wayland again." >&2
+            touch "$X11_MARKER" 2>/dev/null || true
+            ABNW_WINDOW_PLATFORM=x11 exec "$JAVA" ${ABNW_JAVA_OPTS:-} -jar "$JAR" "$@"
+        fi
+        ;;
+esac
+exit "$STATUS"

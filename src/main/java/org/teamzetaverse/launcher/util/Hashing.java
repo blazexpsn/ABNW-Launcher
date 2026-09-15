@@ -44,8 +44,9 @@ public final class Hashing {
         }
     }
 
-    public static boolean matches(final Path file, final String algorithm, final String expected, final long size) throws IOException {
+    public static boolean matches(final Path file, final String expected, final long size) throws IOException {
         requireHash(expected, file.toString());
+        String algorithm = expected.length() == 40 ? "SHA-1" : "SHA-256";
         if (!Files.isRegularFile(file)) {
             return false;
         }

@@ -2,8 +2,12 @@ package org.teamzetaverse.launcher;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
 import org.teamzetaverse.launcher.ui.LauncherUi;
 import org.teamzetaverse.launcher.ui.LauncherWindow;
 import org.teamzetaverse.launcher.util.OperatingSystem;
@@ -16,6 +20,9 @@ public final class LauncherMain {
         if (!OperatingSystem.isSupported()) {
             refuseUnsupportedSystem();
             return;
+        }
+        if (needsFirstThreadRelaunch()) {
+            relaunchOnFirstThread(args);
         }
         LauncherPaths paths = LauncherPaths.defaultLocation();
         try {
@@ -32,6 +39,34 @@ public final class LauncherMain {
 
         LauncherConfig config = LauncherConfig.load(paths);
         new LauncherWindow().run(new LauncherUi(paths, config));
+    }
+
+    private static boolean needsFirstThreadRelaunch() {
+        return OperatingSystem.CURRENT == OperatingSystem.MACOS
+            && !"1".equals(System.getenv("JAVA_STARTED_ON_FIRST_THREAD_" + ProcessHandle.current().pid()))
+            && !Boolean.getBoolean("abnw.firstThreadRelaunch");
+    }
+
+    private static void relaunchOnFirstThread(final String[] args) {
+        try {
+            Path classPath = Path.of(LauncherMain.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            List<String> command = new ArrayList<>();
+            command.add(Path.of(System.getProperty("java.home"), "bin", "java").toString());
+            command.add("-XstartOnFirstThread");
+            command.add("-Dabnw.firstThreadRelaunch=true");
+            try {
+                command.addAll(ManagementFactory.getRuntimeMXBean().getInputArguments());
+            } catch (RuntimeException | LinkageError ignored) {
+            }
+            command.add("-cp");
+            command.add(classPath.toString());
+            command.add(LauncherMain.class.getName());
+            command.addAll(List.of(args));
+            Process process = new ProcessBuilder(command).inheritIO().start();
+            System.exit(process.waitFor());
+        } catch (Exception e) {
+            System.err.println("Could not restart the launcher with -XstartOnFirstThread: " + e.getMessage());
+        }
     }
 
     private static void refuseUnsupportedSystem() {

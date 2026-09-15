@@ -2,8 +2,14 @@
 set -eu
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SUDO=""
-[ "$(id -u)" -eq 0 ] || SUDO="sudo"
+if [ "$(id -u)" -eq 0 ]; then
+    SUDO=""
+elif command -v sudo >/dev/null 2>&1; then
+    SUDO="sudo"
+else
+    echo "sudo is not available and you are not root; installing a portable Java next to the launcher instead."
+    exec sh "$HERE/portable.sh"
+fi
 
 echo "Installing Java for openSUSE with zypper."
 $SUDO zypper --non-interactive refresh

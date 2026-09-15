@@ -2,6 +2,17 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.4",
+      "date": "2026-09-15",
+      "title": "Library and platform fixes",
+      "changes": [
+        "Libraries that ship natives for only some systems now always install their main jar.",
+        "Cached files verified with SHA-256 are no longer re-downloaded on every launch.",
+        "On macOS the launcher now starts correctly with a plain java -jar.",
+        "The Linux Java installers fall back to a portable Java when sudo is not available."
+      ]
+    },
+    {
       "version": "1.0.2",
       "date": "2026-09-15",
       "title": "Safer downloads and accounts",
