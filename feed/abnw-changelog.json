@@ -2,6 +2,19 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.7",
+      "date": "2026-09-16",
+      "title": "Vertical slabs and stairs, and new building blocks",
+      "changes": [
+        "Slabs can be placed vertically: click the side of a block and the slab goes against it, facing the way you look.",
+        "Sneak while placing stairs to stand them vertically. Vertical and ordinary stairs join into corners in every direction.",
+        "New slabs and stairs for all 16 colours of wool and concrete. Concrete ones can also be made in the stonecutter.",
+        "New dirt and grass slabs. Grass slabs spread like grass, and grass spreads onto dirt slabs.",
+        "Wool slabs and stairs burn, dampen vibrations and are quick to shear, like wool.",
+        "Players joining a world over Steam now receive the terrain below the surface as the host does."
+      ]
+    },
+    {
       "version": "1.0.1",
       "date": "2026-09-15",
       "title": "Faster cubic rendering and wider worlds",
