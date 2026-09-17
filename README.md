@@ -332,6 +332,23 @@ The launcher itself remains responsible for installing and updating ABNW.
 
 ---
 
+## Building the Windows launcher
+
+The launcher module exposes a Gradle `jpackage` task that creates a Windows installer `.exe` with a bundled Java runtime. The installer includes the ABNW logo, a Start Menu entry, and a desktop shortcut. Run it from the repository root:
+
+```text
+gradle :launcher:jpackage
+```
+
+The installer is written to `launcher/build/distributions/ABNW Launcher-<version>.exe`.
+The task must run on Windows with a JDK that includes `jpackage`; it cannot create a Windows `.exe` from Linux or macOS.
+
+The icon is generated from the launcher’s existing multi-size PNG assets during the build, so the installed launcher and its shortcuts use the ABNW logo.
+
+The launcher is compiled and packaged with UTF-8 explicitly enabled so text remains intact when started from the installed Windows executable.
+
+The task automatically runs `launcher/scripts/find-wix.py`. The script searches `PATH`, Windows installer registry entries, common package-manager locations, and all filesystem drives for WiX 3 (`candle.exe`/`light.exe`) or WiX 4/5 (`wix.exe`), then adds the discovered directory to the packaging process. If WiX is not installed, install WiX 3+ or WiX 4/5 and run the task again.
+
 ## Mods for ABNW
 
 ABNW has its own native modding platform.
@@ -484,4 +501,3 @@ ABrandNewWorldMC@outlook.com
 Minecraft is a trademark of Mojang Synergies AB.
 
 ABNW is an independent fan-made project and is not affiliated with, endorsed by, approved by or sponsored by Mojang or Microsoft.
-

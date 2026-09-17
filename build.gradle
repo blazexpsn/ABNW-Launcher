@@ -1,3 +1,6 @@
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+
 plugins {
 	id "application"
 	id "com.gradleup.shadow"
@@ -26,6 +29,10 @@ java {
 	}
 }
 
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = "UTF-8"
+}
+
 repositories {
 	mavenCentral()
 }
@@ -47,6 +54,7 @@ dependencies {
 	}
 
 	implementation "com.google.code.gson:gson:${prop("gson_version")}"
+	implementation "org.teamzetaverse:cosmetics-api:1.0.0"
 	implementation "com.davidehrmann.vcdiff:vcdiff-core:${prop("vcdiff_version")}"
 	implementation "org.slf4j:slf4j-api:${prop("slf4j_version")}"
 	implementation "org.slf4j:slf4j-nop:${prop("slf4j_version")}"
@@ -86,6 +94,151 @@ tasks.shadowJar {
 	}
 	manifest {
 		attributes("Main-Class": application.mainClass.get(), "Implementation-Version": version.toString())
+	}
+}
+
+def jpackageInput = layout.buildDirectory.dir("jpackage/input")
+def jpackageOutput = layout.buildDirectory.dir("distributions")
+def windowsIcon = layout.buildDirectory.file("jpackage/abnw-launcher.ico")
+def windowsIconInputs = [16, 32, 48, 256].collect {
+	file("src/main/resources/assets/icon_${it}.png")
+}
+
+def findJpackage = {
+	if (!System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")) {
+		throw new GradleException("The jpackage task creates a Windows application and must run on Windows.")
+	}
+
+	def javaHome = file(System.getProperty("java.home"))
+	def jpackageExecutable = new File(javaHome, "bin/jpackage.exe")
+	if (!jpackageExecutable.isFile()) {
+		jpackageExecutable = new File(javaHome, "bin/jpackage")
+	}
+	if (!jpackageExecutable.isFile()) {
+		throw new GradleException("Could not find jpackage under ${javaHome}. Run Gradle with a JDK, not a JRE.")
+	}
+	jpackageExecutable
+}
+
+def findWix = {
+	def output = new ByteArrayOutputStream()
+	def script = file("scripts/find-wix.py")
+	def pythonCommands = [
+		[System.getenv("PYTHON")].findAll { it },
+		["python"],
+		["py", "-3"]
+	].findAll { !it.isEmpty() }
+	def process = null
+	def startFailure = null
+	for (def command : pythonCommands) {
+		try {
+			process = new ProcessBuilder(command + [script.absolutePath])
+				.redirectError(ProcessBuilder.Redirect.INHERIT)
+				.start()
+			break
+		} catch (IOException failure) {
+			startFailure = failure
+		}
+	}
+	if (process == null) {
+		throw new GradleException("Could not start Python to locate WiX. Install Python or set the PYTHON environment variable.", startFailure)
+	}
+	output << process.inputStream.getText("UTF-8")
+	def exitCode = process.waitFor()
+	def directory = output.toString("UTF-8").trim()
+	if (exitCode != 0 || directory.isEmpty()) {
+		throw new GradleException("Could not locate WiX. Install WiX 3+ or WiX 4/5, then run the jpackage task again.")
+	}
+	directory
+}
+
+def jpackageArguments = { String packageType, File inputDirectory, File outputDirectory ->
+	[
+		findJpackage().absolutePath,
+		"--type", packageType,
+		"--name", "ABNW Launcher",
+		"--app-version", version.toString(),
+		"--vendor", "Team Zetaverse",
+		"--description", "The A Brand New World launcher.",
+		"--java-options", "-Dfile.encoding=UTF-8",
+		"--java-options", "-Dstdout.encoding=UTF-8",
+		"--java-options", "-Dstderr.encoding=UTF-8",
+		"--input", inputDirectory.absolutePath,
+		"--main-jar", tasks.shadowJar.archiveFile.get().asFile.name,
+		"--main-class", application.mainClass.get(),
+		"--dest", outputDirectory.absolutePath
+	]
+}
+
+def windowsIconTask = tasks.register("generateWindowsIcon") {
+	group = "distribution"
+	description = "Builds the multi-size Windows icon used by jpackage and its shortcuts."
+	inputs.files(windowsIconInputs)
+	outputs.file(windowsIcon)
+
+	doLast {
+		def images = windowsIconInputs.collect { source ->
+			if (!source.isFile()) {
+				throw new GradleException("Missing launcher icon: ${source}")
+			}
+			[size: Integer.parseInt(source.name.replaceAll("[^0-9]", "")), bytes: source.bytes]
+		}
+		def headerSize = 6 + (16 * images.size())
+		def totalSize = headerSize + images.sum { it.bytes.length }
+		def icon = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN)
+		icon.putShort(0 as short)
+		icon.putShort(1 as short)
+		icon.putShort(images.size() as short)
+		def offset = headerSize
+		images.each { image ->
+			def dimension = image.size == 256 ? 0 : image.size
+			icon.put(dimension as byte)
+			icon.put(dimension as byte)
+			icon.put(0 as byte)
+			icon.put(0 as byte)
+			icon.putShort(1 as short)
+			icon.putShort(32 as short)
+			icon.putInt(image.bytes.length)
+			icon.putInt(offset)
+			offset += image.bytes.length
+		}
+		images.each { image -> icon.put(image.bytes) }
+		windowsIcon.get().asFile.parentFile.mkdirs()
+		windowsIcon.get().asFile.bytes = icon.array()
+	}
+}
+
+def jpackageInputTask = tasks.register("prepareJpackageInput", Sync) {
+	group = "distribution"
+	description = "Stages the launcher JAR for jpackage."
+	dependsOn(tasks.shadowJar)
+	from(tasks.shadowJar)
+	into(jpackageInput)
+}
+
+tasks.register("jpackage", Exec) {
+	group = "distribution"
+	description = "Builds the Windows ABNW Launcher installer as an .exe with a bundled Java runtime."
+	dependsOn(jpackageInputTask, windowsIconTask)
+
+	def outputFile = jpackageOutput.map { it.file("ABNW Launcher-${version}.exe") }
+	inputs.file(tasks.named("shadowJar").flatMap { it.archiveFile })
+	outputs.file(outputFile)
+
+	doFirst {
+		def inputDirectory = jpackageInput.get().asFile
+		def destination = jpackageOutput.get().asFile
+		def wixDirectory = findWix()
+		destination.mkdirs()
+		project.delete(outputFile.get().asFile)
+		environment("Path", wixDirectory + File.pathSeparator + (System.getenv("Path") ?: System.getenv("PATH") ?: ""))
+		commandLine(jpackageArguments("exe", inputDirectory, destination) + [
+			"--icon", windowsIcon.get().asFile.absolutePath,
+			"--win-menu",
+			"--win-menu-group", "ABNW",
+			"--win-shortcut",
+			"--win-upgrade-uuid", "9d7f5c1b-9b3a-4bc2-8a21-7d2c8f9b1e44"
+		])
 	}
 }
 

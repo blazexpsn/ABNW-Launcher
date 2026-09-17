@@ -14,6 +14,7 @@ final class SettingsPage {
     private final LauncherUi ui;
     private final ImString javaPath = new ImString(512);
     private final ImString clientId = new ImString(128);
+    private final ImString devName = new ImString(17);
     private final int[] memory = {4096};
     private final float[] scale = {1f};
     private boolean bound;
@@ -193,6 +194,23 @@ final class SettingsPage {
         ImGui.dummy(0, px(8));
         if (this.showAdvanced) {
             this.section("set-advanced-card", Icons.Icon.WRENCH, "Advanced", width, () -> {
+                boolean canAddOffline = this.ui.accounts.hasAuthenticatedAccount();
+                this.row("Offline accounts",
+                    canAddOffline
+                        ? "Launches without signing in each time. Online servers and cosmetics won't accept it."
+                        : "Sign in with a Microsoft account first (and keep its session current) — offline accounts need a live authenticated session.", () -> {
+                    Widgets.beginField();
+                    ImGui.setNextItemWidth(this.controlWidth() - px(88));
+                    ImGui.inputTextWithHint("##set-dev-name", "Player name", this.devName);
+                    Widgets.endField();
+                    ImGui.sameLine(0, px(8));
+                    if (Widgets.secondary("set-dev-add", "Add", Icons.Icon.PLUS,
+                        canAddOffline && this.devName.get().matches("[A-Za-z0-9_]{3,16}"))) {
+                        if (this.ui.addOfflineAccount(this.devName.get())) {
+                            this.devName.set("");
+                        }
+                    }
+                });
                 this.row("Microsoft client ID", "Only change this if you know you need to. Leave empty to use the built-in one.", () -> {
                     Widgets.beginField();
                     ImGui.setNextItemWidth(this.controlWidth());

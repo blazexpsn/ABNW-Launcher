@@ -62,21 +62,39 @@ final class Fonts {
 
     private static Face add(final ImFontAtlas atlas, final byte[] data, final float size, final float scale) {
         float pixels = Math.round(size * scale);
-        if (data == null) {
-            ImFontConfig fallback = new ImFontConfig();
-            fallback.setSizePixels(pixels);
-            ImFont font = atlas.addFontDefaultVector(fallback);
-            fallback.destroy();
-            return new Face(font, pixels);
+        if (!isTrueType(data)) {
+            return fallback(atlas, pixels);
         }
         ImFontConfig config = new ImFontConfig();
         config.setFontLoaderFlags(ImGuiFreeTypeLoaderFlags.LightHinting);
         config.setPixelSnapH(true);
         config.setOversampleH(1);
         config.setOversampleV(1);
-        ImFont font = atlas.addFontFromMemoryTTF(data, pixels, config, RANGES);
+        try {
+            ImFont font = atlas.addFontFromMemoryTTF(data, pixels, config, RANGES);
+            return font == null ? fallback(atlas, pixels) : new Face(font, pixels);
+        } catch (RuntimeException e) {
+            System.err.println("Could not load bundled font: " + e.getMessage());
+            return fallback(atlas, pixels);
+        } finally {
+            config.destroy();
+        }
+    }
+
+    private static Face fallback(final ImFontAtlas atlas, final float pixels) {
+        ImFontConfig config = new ImFontConfig();
+        config.setSizePixels(pixels);
+        ImFont font = atlas.addFontDefaultVector(config);
         config.destroy();
         return new Face(font, pixels);
+    }
+
+    private static boolean isTrueType(final byte[] data) {
+        if (data == null || data.length < 4) {
+            return false;
+        }
+        return (data[0] == 0 && data[1] == 1 && data[2] == 0 && data[3] == 0)
+            || (data[0] == 'O' && data[1] == 'T' && data[2] == 'T' && data[3] == 'O');
     }
 
     private static byte[] read(final String name) {

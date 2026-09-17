@@ -51,11 +51,11 @@ public final class GameLauncher {
         tokens.put("game_assets", game.assetsDir().toString());
         tokens.put("assets_index_name", game.assetIndexId());
         tokens.put("auth_uuid", account.uuid);
-        tokens.put("auth_access_token", account.minecraftToken);
-        tokens.put("auth_session", account.minecraftToken);
+        tokens.put("auth_access_token", account.devOffline ? "0" : account.minecraftToken);
+        tokens.put("auth_session", account.devOffline ? "0" : account.minecraftToken);
         tokens.put("clientid", this.config.effectiveClientId());
-        tokens.put("auth_xuid", account.xuid);
-        tokens.put("user_type", "msa");
+        tokens.put("auth_xuid", account.devOffline ? "0" : account.xuid);
+        tokens.put("user_type", account.devOffline ? "legacy" : "msa");
         tokens.put("user_properties", "{}");
         tokens.put("version_type", "ABNW");
         tokens.put("natives_directory", instance.nativesFolder().toString());
@@ -111,12 +111,39 @@ public final class GameLauncher {
         }
 
         ProcessBuilder builder = new ProcessBuilder(command).directory(instance.gameFolder().toFile()).redirectErrorStream(true);
+        steamOverlayEnvironment(builder.environment());
         Path log = this.paths.logs().resolve(instance.id + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".log");
         Process process = builder.start();
         GameProcess running = new GameProcess(instance.id, process, log, onExit);
         running.append("[launcher] Starting " + instance.name + " (" + instance.release.displayName() + ", renderer " + renderer + ")");
         running.append("[launcher] " + redact(command, account));
         return running;
+    }
+
+    private static void steamOverlayEnvironment(final Map<String, String> environment) {
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        if (os.contains("mac")) {
+            return;
+        }
+        environment.put("SteamAppId", "480");
+        environment.put("SteamGameId", "480");
+        environment.put("SteamOverlayGameId", "480");
+        environment.put("ENABLE_VK_LAYER_VALVE_steam_overlay_1", "1");
+        if (!os.contains("linux")) {
+            return;
+        }
+        Path home = Path.of(System.getProperty("user.home"));
+        for (Path steam : List.of(
+            home.resolve(".steam/steam"),
+            home.resolve(".local/share/Steam"),
+            home.resolve(".var/app/com.valvesoftware.Steam/.local/share/Steam"))) {
+            Path renderer = steam.resolve("ubuntu12_64/gameoverlayrenderer.so");
+            if (Files.isRegularFile(renderer)) {
+                String existing = environment.get("LD_PRELOAD");
+                environment.put("LD_PRELOAD", existing == null || existing.isBlank() ? renderer.toString() : existing + ":" + renderer);
+                return;
+            }
+        }
     }
 
     private static void appendTemplate(final List<String> command, final JsonArray template, final Map<String, String> tokens, final Map<String, Boolean> features) {

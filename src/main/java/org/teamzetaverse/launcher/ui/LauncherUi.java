@@ -348,7 +348,7 @@ public final class LauncherUi {
         float textWidth = w - (tx - x) - px(30);
         Widgets.drawText(dl, Fonts.label, tx, y + px(11), u32(Theme.TEXT), Widgets.ellipsize(Fonts.label, name, textWidth));
         Widgets.drawText(dl, Fonts.small, tx, y + px(11) + Fonts.label.size() + px(1), u32(Theme.FAINT),
-            account.isPresent() ? "Microsoft account" : "Microsoft account needed");
+            account.isPresent() ? (account.get().devOffline ? "Offline account" : "Microsoft account") : "Microsoft account needed");
         Icons.draw(dl, Icons.Icon.CHEVRON_DOWN, x + w - px(26), y + (h - px(14)) * 0.5f, px(14), u32(Theme.MUTED));
         if (clicked) {
             if (account.isEmpty() && this.accounts.all().isEmpty()) {
@@ -568,6 +568,11 @@ public final class LauncherUi {
             return;
         }
         Account account = maybeAccount.get();
+        if (account.devOffline && !this.accounts.hasAuthenticatedAccount()) {
+            this.fail(new MicrosoftAuth.AuthException(
+                "An offline account needs a currently signed-in Microsoft account. Sign in, or launch your Microsoft account once to refresh its session."));
+            return;
+        }
         this.select(instance);
         this.tasks.submit("Launching " + instance.name, progress -> {
             progress.status("Signing in…");
@@ -637,6 +642,24 @@ public final class LauncherUi {
             this.installCache.clear();
             this.prepare(instance);
         }, this::fail);
+    }
+
+    boolean addOfflineAccount(final String name) {
+        if (!this.accounts.hasAuthenticatedAccount()) {
+            return false;
+        }
+        if (!name.matches("[A-Za-z0-9_]{3,16}")) {
+            return false;
+        }
+        Account account = new Account();
+        account.devOffline = true;
+        account.name = name;
+        account.uuid = java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString().replace("-", "");
+        account.xuid = "0";
+        this.accounts.put(account);
+        this.config.selectedAccount = account.uuid;
+        this.config.save();
+        return true;
     }
 
     void startSignIn() {

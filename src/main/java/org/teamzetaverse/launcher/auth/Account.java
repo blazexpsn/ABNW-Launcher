@@ -4,6 +4,7 @@ public final class Account {
     public String uuid = "";
     public String name = "";
     public String xuid = "";
+    public boolean devOffline;
     public transient String msaRefreshToken = "";
     public transient String minecraftToken = "";
     public transient long minecraftTokenExpiry;

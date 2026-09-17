@@ -74,7 +74,7 @@ public final class AccountStore {
                 account.minecraftTokenExpiry = Json.number(secret, "minecraftTokenExpiry", 0L);
                 account.cosmeticsToken = valueOr(Json.string(secret, "cosmeticsToken"));
             }
-            if (!account.msaRefreshToken.isEmpty()) {
+            if (!account.msaRefreshToken.isEmpty() || account.devOffline) {
                 this.accounts.add(account);
             }
         }
@@ -108,6 +108,17 @@ public final class AccountStore {
 
     public List<Account> all() {
         return this.accounts;
+    }
+
+    /**
+     * True once at least one account holds a currently valid Minecraft session token — i.e. it has
+     * signed in (or silently refreshed) within the last {@link Account#hasValidMinecraftToken() token
+     * lifetime}, not just that it's linked. Offline accounts are gated on this: they can only be
+     * created, and only allowed to launch, while the launcher holds live proof of a Mojang-authenticated
+     * account. A stale/expired token doesn't count, even if the account is still saved.
+     */
+    public boolean hasAuthenticatedAccount() {
+        return this.accounts.stream().anyMatch(account -> !account.devOffline && account.hasValidMinecraftToken());
     }
 
     public Optional<Account> find(final String uuid) {

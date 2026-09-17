@@ -9,8 +9,13 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+import org.teamzetaverse.cosmetics.api.Cosmetic;
+import org.teamzetaverse.cosmetics.api.CosmeticRegistry;
+import org.teamzetaverse.cosmetics.api.InvalidRegistryException;
 import org.teamzetaverse.launcher.BuildInfo;
 import org.teamzetaverse.launcher.auth.Account;
+import org.teamzetaverse.launcher.auth.MicrosoftAuth;
 import org.teamzetaverse.launcher.cosmetics.CosmeticsClient;
 import org.teamzetaverse.launcher.task.Progress;
 
@@ -143,6 +148,10 @@ final class CosmeticsPage {
             }
             if (!who.isEmpty()) {
                 Widgets.textWrapped(Fonts.body, Theme.MUTED, who);
+            }
+            String unlocked = unlockedNames(this.status);
+            if (!unlocked.isEmpty()) {
+                Widgets.textWrapped(Fonts.body, Theme.TEXT, "Unlocked: " + unlocked);
             }
             ImGui.dummy(0, px(8));
             boolean busy = this.loading || this.unlinking != null;
@@ -297,6 +306,9 @@ final class CosmeticsPage {
     }
 
     private <T> T withSession(final Account account, final Progress progress, final Call<T> call) throws Exception {
+        if (account.devOffline) {
+            throw new MicrosoftAuth.AuthException("Offline accounts can't use cosmetics. Sign in with Microsoft.");
+        }
         String token = account.cosmeticsToken;
         if (token != null && !token.isEmpty()) {
             try {
@@ -311,6 +323,16 @@ final class CosmeticsPage {
         account.cosmeticsToken = issued;
         this.ui.accounts.save();
         return call.run(issued);
+    }
+
+    private static String unlockedNames(final CosmeticsClient.Status status) {
+        CosmeticRegistry registry;
+        try {
+            registry = CosmeticRegistry.bundled();
+        } catch (InvalidRegistryException e) {
+            return "";
+        }
+        return status.unlocked().stream().map(registry::get).flatMap(Optional::stream).map(Cosmetic::name).collect(Collectors.joining(", "));
     }
 
     private static String message(final Throwable error) {

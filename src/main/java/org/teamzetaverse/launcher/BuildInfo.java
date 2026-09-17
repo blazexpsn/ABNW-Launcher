@@ -3,6 +3,7 @@ package org.teamzetaverse.launcher;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
+import org.teamzetaverse.cosmetics.api.CosmeticsService;
 
 public final class BuildInfo {
     public static final String VERSION;
@@ -30,7 +31,7 @@ public final class BuildInfo {
         LAUNCHER_BRANCH = clean(properties.getProperty("launcherBranch"), "main");
         MSA_CLIENT_ID = clean(properties.getProperty("msaClientId"), "");
         DISCORD_CLIENT_ID = clean(properties.getProperty("discordClientId"), "");
-        COSMETICS_API_URL = httpsOrEmpty(clean(System.getProperty("abnw.cosmeticsApiUrl", properties.getProperty("cosmeticsApiUrl")), ""));
+        COSMETICS_API_URL = httpsOrEmpty(clean(System.getProperty(CosmeticsService.URL_PROPERTY, properties.getProperty("cosmeticsApiUrl")), CosmeticsService.DEFAULT_URL));
         PATREON_PAGE_URL = httpsOrEmpty(clean(properties.getProperty("patreonPageUrl"), ""));
     }
 

@@ -81,7 +81,7 @@ public final class MicrosoftAuth {
     }
 
     public void refresh(final Account account, final Progress progress) throws IOException, Progress.CancelledException {
-        if (account.hasValidMinecraftToken()) {
+        if (account.devOffline || account.hasValidMinecraftToken()) {
             return;
         }
         this.requireClientId();

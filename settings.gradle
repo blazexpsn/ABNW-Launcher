@@ -12,3 +12,5 @@ pluginManagement {
 }
 
 rootProject.name = "abnw-launcher"
+
+includeBuild(file("../cosmetics-api").isDirectory() ? "../cosmetics-api" : "cosmetics-api")

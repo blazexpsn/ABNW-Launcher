@@ -1,0 +1,25 @@
+plugins {
+	id "java-library"
+}
+
+group = "org.teamzetaverse"
+version = "1.0.0"
+
+java {
+	toolchain {
+		languageVersion.set(JavaLanguageVersion.of(21))
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.release.set(21)
+	options.encoding = "UTF-8"
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	compileOnly "com.google.code.gson:gson:2.11.0"
+}
