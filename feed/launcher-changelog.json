@@ -2,6 +2,14 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.6",
+      "date": "2026-09-17",
+      "title": "Offline accounts",
+      "changes": [
+        "Offline accounts are now supported, but you must first sign in and authenticate an account before creating or using one."
+      ]
+    },
+    {
       "version": "1.0.5",
       "date": "2026-09-15",
       "title": "Cosmetics",
