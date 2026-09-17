@@ -99,6 +99,7 @@ tasks.shadowJar {
 
 def jpackageInput = layout.buildDirectory.dir("jpackage/input")
 def jpackageOutput = layout.buildDirectory.dir("distributions")
+def wixPathCache = layout.buildDirectory.file("jpackage/wixpath.txt")
 def windowsIcon = layout.buildDirectory.file("jpackage/abnw-launcher.ico")
 def windowsIconInputs = [16, 32, 48, 256].collect {
 	file("src/main/resources/assets/icon_${it}.png")
@@ -132,7 +133,7 @@ def findWix = {
 	def startFailure = null
 	for (def command : pythonCommands) {
 		try {
-			process = new ProcessBuilder(command + [script.absolutePath])
+			process = new ProcessBuilder(command + [script.absolutePath, "--cache-file", wixPathCache.get().asFile.absolutePath])
 				.redirectError(ProcessBuilder.Redirect.INHERIT)
 				.start()
 			break

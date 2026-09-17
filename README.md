@@ -347,7 +347,7 @@ The icon is generated from the launcher’s existing multi-size PNG assets durin
 
 The launcher is compiled and packaged with UTF-8 explicitly enabled so text remains intact when started from the installed Windows executable.
 
-The task automatically runs `launcher/scripts/find-wix.py`. The script searches `PATH`, Windows installer registry entries, common package-manager locations, and all filesystem drives for WiX 3 (`candle.exe`/`light.exe`) or WiX 4/5 (`wix.exe`), then adds the discovered directory to the packaging process. If WiX is not installed, install WiX 3+ or WiX 4/5 and run the task again.
+The task automatically runs `launcher/scripts/find-wix.py`. The script first validates the cached path in `launcher/build/jpackage/wixpath.txt`; if that file is missing or stale, it searches `PATH`, Windows installer registry entries, common package-manager locations, and all filesystem drives for WiX 3 (`candle.exe`/`light.exe`) or WiX 4/5 (`wix.exe`). A successful search rewrites `wixpath.txt`, and the discovered directory is added to the packaging process. If WiX is not installed, install WiX 3+ or WiX 4/5 and run the task again.
 
 ## Mods for ABNW
 

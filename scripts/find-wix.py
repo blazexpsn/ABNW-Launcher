@@ -4,6 +4,7 @@
 import os
 import string
 import sys
+import argparse
 
 try:
     import winreg
@@ -76,10 +77,46 @@ def registry_install_locations():
     return locations
 
 
+def cached_wix_directory(cache_file):
+    if not cache_file or not os.path.isfile(cache_file):
+        return None
+    try:
+        with open(cache_file, "r", encoding="utf-8") as stream:
+            return wix_directory(stream.readline().strip())
+    except (OSError, UnicodeError):
+        return None
+
+
+def remember_wix_directory(cache_file, directory):
+    if not cache_file:
+        return
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(cache_file)), exist_ok=True)
+        with open(cache_file, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(directory + "\n")
+    except OSError as error:
+        print("Could not write WiX cache: {}".format(error), file=sys.stderr)
+
+
+def report_wix_directory(directory, cache_file):
+    remember_wix_directory(cache_file, directory)
+    print(directory)
+    return 0
+
+
 def main():
+    parser = argparse.ArgumentParser(description="Find the WiX Toolset directory for jpackage.")
+    parser.add_argument("--cache-file", help="File used to cache the discovered WiX directory.")
+    arguments = parser.parse_args()
+
     if os.name != "nt":
         print("WiX discovery is only supported on Windows.", file=sys.stderr)
         return 1
+
+    cached = cached_wix_directory(arguments.cache_file)
+    if cached:
+        print(cached)
+        return 0
 
     candidates = []
     candidates.extend(os.environ.get("PATH", "").split(os.pathsep))
@@ -107,8 +144,7 @@ def main():
         seen.add(candidate.lower())
         found = wix_directory(candidate) or search_tree(candidate)
         if found:
-            print(found)
-            return 0
+            return report_wix_directory(found, arguments.cache_file)
 
     print("WiX was not found in standard locations; scanning filesystem drives...",
           file=sys.stderr)
@@ -117,8 +153,7 @@ def main():
         if os.path.isdir(root):
             found = search_tree(root)
             if found:
-                print(found)
-                return 0
+                return report_wix_directory(found, arguments.cache_file)
 
     print("Could not locate WiX. Searched PATH, registry entries, common install roots, and all filesystem drives.",
           file=sys.stderr)
