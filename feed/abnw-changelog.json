@@ -2,6 +2,26 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.2",
+      "date": "2026-09-20",
+      "title": "Doors keep their carpet in the right half",
+      "changes": [
+        "A carpet laid into a door stays in the bottom half. The top half no longer copies it, and opening or powering the door no longer takes the bottom half's carpet away.",
+        "The upper half of a sunflower, lilac, peony, rose bush or large fern cannot be carpeted either: a carpet lies in the half that meets the floor."
+      ]
+    },
+    {
+      "version": "1.0.9.1",
+      "date": "2026-09-20",
+      "title": "Carpetlogging, a new title screen, and mods that share",
+      "changes": [
+        "Carpets can be laid into a block's own space, the way water fills one: put a carpet under a chest, a slab, a fence or anything else that leaves room and it stays there with the block.",
+        "Wool, moss and pale moss carpets can all be laid this way. Shears lift the carpet back off, and breaking the block drops both.",
+        "The title screen now wears ABNW's own logo.",
+        "Two mods that reach for the same behaviour no longer cancel each other out: targeting, damage, drops, riding, fluid flow, loot, the camera and model poses all gather what every mod has to say before deciding."
+      ]
+    },
+    {
       "version": "1.0.7",
       "date": "2026-09-16",
       "title": "Vertical slabs and stairs, and new building blocks",
