@@ -109,6 +109,7 @@ public final class LauncherUi {
         this.gameLauncher = new GameLauncher(paths, config);
         this.selectedInstanceId = config.selectedInstance;
         this.images = new ImageCache(paths.cache().resolve("images"));
+        Widgets.useImages(this.images);
         this.showcase = new Showcase(this.images);
         this.announcements = new Announcements(config);
         this.discord = new DiscordPresence(BuildInfo.DISCORD_CLIENT_ID, config.discordPresence);

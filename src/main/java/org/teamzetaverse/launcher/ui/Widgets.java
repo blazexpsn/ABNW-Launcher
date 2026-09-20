@@ -18,9 +18,50 @@ final class Widgets {
         PRIMARY, SECONDARY, GHOST, DANGER
     }
 
+    private static final String PANEL_PRIMARY = "resource:/assets/button_primary.png";
+    private static final String PANEL_SECONDARY = "resource:/assets/button_secondary.png";
+    private static final int PANEL_PRIMARY_SEAM = 11;
+    private static final int PANEL_SECONDARY_SEAM = 29;
+    private static final float PANEL_FACE = 0.82f;
+
     private static final ImVec2 MEASURE = new ImVec2();
 
+    private static ImageCache images;
+
     private Widgets() {
+    }
+
+    static void useImages(final ImageCache cache) {
+        images = cache;
+    }
+
+    private static ImageCache.Texture panelFor(final Variant variant) {
+        if (images == null) {
+            return null;
+        }
+        if (variant == Variant.PRIMARY) {
+            return images.get(PANEL_PRIMARY, 0, true);
+        }
+        return variant == Variant.SECONDARY ? images.get(PANEL_SECONDARY, 0, true) : null;
+    }
+
+    private static void drawPanel(final ImDrawList dl, final ImageCache.Texture texture, final int seam, final float x0, final float y0, final float x1,
+                                  final float y1, final int tint) {
+        float columns = texture.width();
+        float scale = (y1 - y0) / texture.height();
+        float left = seam * scale;
+        float right = (columns - seam - 1) * scale;
+        float span = x1 - x0;
+        if (left + right > span) {
+            float squash = span / (left + right);
+            left *= squash;
+            right *= squash;
+        }
+        float u0 = seam / columns;
+        float u1 = (seam + 1) / columns;
+        dl.addImage(texture.id(), x0, y0, x0 + left, y1, 0, 0, u0, 1, tint);
+        dl.addImage(texture.id(), x0 + left, y0, x1 - right, y1, u0, 0, u1, 1, tint);
+        dl.addImage(texture.id(), x1 - right, y0, x1, y1, u1, 0, 1, 1, tint);
     }
 
     static float textWidth(final Fonts.Face face, final String text) {
@@ -131,42 +172,70 @@ final class Widgets {
         float x1 = x + w - inset;
         float y1 = y + h - inset;
         ImDrawList dl = ImGui.getWindowDrawList();
+        ImageCache.Texture panel = panelFor(variant);
 
         int fg;
-        switch (variant) {
-            case PRIMARY -> {
-                if (hv > 0.01f && enabled) {
-                    for (int i = 3; i >= 1; i--) {
-                        float grow = px(2.6f) * i * hv;
-                        dl.addRectFilled(x0 - grow, y0 - grow, x1 + grow, y1 + grow, u32(Theme.EMBER, 0.07f * hv / i), r + grow);
-                    }
+        float centre;
+        boolean carved;
+        if (panel != null) {
+            float drop = press * px(2);
+            if (variant == Variant.PRIMARY && hv > 0.01f && enabled) {
+                for (int i = 3; i >= 1; i--) {
+                    float grow = px(2.6f) * i * hv;
+                    dl.addRectFilled(x - grow, y + drop - grow, x + w + grow, y + h + drop + grow, u32(Theme.EMBER, 0.07f * hv / i), r + grow);
                 }
-                int base = active ? Theme.EMBER_LO : Theme.mix(Theme.EMBER, Theme.EMBER_HI, hv);
-                dl.addRectFilled(x0, y0, x1, y1, u32(base, alpha), r);
-                dl.addRectFilled(x0, y0, x1, y0 + (y1 - y0) * 0.5f, u32(0xFFFFFF, 0.07f * alpha), r, ImDrawFlags.RoundCornersTop);
-                fg = u32(Theme.ON_EMBER, alpha);
             }
-            case SECONDARY -> {
-                dl.addRectFilled(x0, y0, x1, y1, u32(Theme.mix(Theme.SURFACE_HI, Theme.SURFACE_HOVER, hv), alpha), r);
-                dl.addRect(x0, y0, x1, y1, u32(Theme.mix(Theme.BORDER, Theme.EMBER_LO, hv * 0.35f), alpha), r, ImDrawFlags.None, px(1));
-                fg = u32(Theme.TEXT, alpha);
-            }
-            case DANGER -> {
-                dl.addRectFilled(x0, y0, x1, y1, u32(Theme.ERROR, (0.12f + 0.12f * hv) * alpha), r);
-                fg = u32(Theme.ERROR, alpha);
-            }
-            default -> {
-                dl.addRectFilled(x0, y0, x1, y1, u32(0xFFFFFF, 0.06f * hv * alpha), r);
-                fg = u32(Theme.mix(Theme.MUTED, Theme.TEXT, hv), alpha);
+            int seam = variant == Variant.PRIMARY ? PANEL_PRIMARY_SEAM : PANEL_SECONDARY_SEAM;
+            drawPanel(dl, panel, seam, x, y + drop, x + w, y + h + drop, u32(Theme.mix(0xCBBAD6, 0xFFFFFF, hv), alpha));
+            fg = u32(0xFFFFFF, alpha);
+            centre = y + drop + h * PANEL_FACE * 0.5f;
+            carved = true;
+        } else {
+            centre = y + h * 0.5f;
+            carved = false;
+            switch (variant) {
+                case PRIMARY -> {
+                    if (hv > 0.01f && enabled) {
+                        for (int i = 3; i >= 1; i--) {
+                            float grow = px(2.6f) * i * hv;
+                            dl.addRectFilled(x0 - grow, y0 - grow, x1 + grow, y1 + grow, u32(Theme.EMBER, 0.07f * hv / i), r + grow);
+                        }
+                    }
+                    int base = active ? Theme.EMBER_LO : Theme.mix(Theme.EMBER, Theme.EMBER_HI, hv);
+                    dl.addRectFilled(x0, y0, x1, y1, u32(base, alpha), r);
+                    dl.addRectFilled(x0, y0, x1, y0 + (y1 - y0) * 0.5f, u32(0xFFFFFF, 0.07f * alpha), r, ImDrawFlags.RoundCornersTop);
+                    fg = u32(Theme.ON_EMBER, alpha);
+                }
+                case SECONDARY -> {
+                    dl.addRectFilled(x0, y0, x1, y1, u32(Theme.mix(Theme.SURFACE_HI, Theme.SURFACE_HOVER, hv), alpha), r);
+                    dl.addRect(x0, y0, x1, y1, u32(Theme.mix(Theme.BORDER, Theme.EMBER_LO, hv * 0.35f), alpha), r, ImDrawFlags.None, px(1));
+                    fg = u32(Theme.TEXT, alpha);
+                }
+                case DANGER -> {
+                    dl.addRectFilled(x0, y0, x1, y1, u32(Theme.ERROR, (0.12f + 0.12f * hv) * alpha), r);
+                    fg = u32(Theme.ERROR, alpha);
+                }
+                default -> {
+                    dl.addRectFilled(x0, y0, x1, y1, u32(0xFFFFFF, 0.06f * hv * alpha), r);
+                    fg = u32(Theme.mix(Theme.MUTED, Theme.TEXT, hv), alpha);
+                }
             }
         }
+        int carvedShadow = u32(0x2B0B3D, 0.5f * alpha);
         float cx = x + (w - contentW) * 0.5f;
         if (icon != null) {
-            Icons.draw(dl, icon, cx, y + (h - iconSize) * 0.5f, iconSize, fg);
+            if (carved) {
+                Icons.draw(dl, icon, cx + px(1.5f), centre - iconSize * 0.5f + px(1.5f), iconSize, carvedShadow);
+            }
+            Icons.draw(dl, icon, cx, centre - iconSize * 0.5f, iconSize, fg);
             cx += iconSize + gap;
         }
         if (!label.isEmpty()) {
-            drawText(dl, face, cx, y + (h - face.size()) * 0.5f - px(0.5f), fg, label);
+            float ty = centre - face.size() * 0.5f - px(0.5f);
+            if (carved) {
+                drawText(dl, face, cx + px(1.5f), ty + px(1.5f), carvedShadow, label);
+            }
+            drawText(dl, face, cx, ty, fg, label);
         }
         return clicked && enabled;
     }
