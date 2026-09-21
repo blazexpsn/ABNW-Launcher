@@ -192,6 +192,7 @@ final class World {
             case PENGUIN_PLAY -> "play";
             case PENGUIN_KEY -> "key";
             case PENGUIN_SUPPORTER -> "heart";
+            case PENGUIN_HAPPY -> "happy";
             default -> null;
         };
         return pose == null ? null : "resource:/assets/ui/penguin_" + pose + ".png";

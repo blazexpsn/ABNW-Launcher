@@ -102,6 +102,8 @@ final class NewsPage {
         }
         if (latest) {
             Widgets.drawPill(dl, pillX, cy, "Latest", Theme.SUN, Theme.SUN, 0.13f, null);
+            float penguin = px(34);
+            Icons.draw(dl, Icons.Icon.PENGUIN_HAPPY, pillX + Widgets.pillWidth("Latest", null) + px(4), cy + px(22) - penguin, penguin, u32(0xFFFFFF));
         }
         cy += pillHeight;
         if (titleHeight > 0) {

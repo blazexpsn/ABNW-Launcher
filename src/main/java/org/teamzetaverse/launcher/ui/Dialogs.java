@@ -284,8 +284,10 @@ final class Dialogs {
             pillRight -= pw + px(6);
         }
         if (this.listing != null && release.id.equals(this.listing.latest())) {
-            float pw = Widgets.pillWidth("Latest", Icons.Icon.SPARK);
-            Widgets.drawPill(dl, pillRight - pw, y + (h - px(22)) * 0.5f, "Latest", Theme.SUN, Theme.SUN, 0.13f, Icons.Icon.SPARK);
+            float pw = Widgets.pillWidth("Latest", null);
+            Widgets.drawPill(dl, pillRight - pw, y + (h - px(22)) * 0.5f, "Latest", Theme.SUN, Theme.SUN, 0.13f, null);
+            float penguin = px(34);
+            Icons.draw(dl, Icons.Icon.PENGUIN_HAPPY, pillRight - pw - penguin * 1.3f - px(4), y + (h - penguin) * 0.5f, penguin, u32(0xFFFFFF));
         }
         return clicked;
     }
