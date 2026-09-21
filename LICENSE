@@ -1,23 +1,44 @@
 ABNW Launcher
 Copyright (c) 2026 Team Zetaverse. All rights reserved.
 
-This software and its source code are the property of Team Zetaverse. No part of it may be
-copied, modified, merged, published, distributed, sublicensed, or sold, in source or binary
-form, without prior written permission from Team Zetaverse.
+This software, its source code, and original launcher assets are the property of
+Team Zetaverse.
 
-Official builds published by Team Zetaverse may be downloaded and run for personal use.
+Unless otherwise stated, this includes original graphical assets created for the
+ABNW Launcher, including textures, PNG images, icons, mascot artwork, and other
+launcher graphics, as well as the original Team Zetaverse pixel typeface used as
+a prominent part of the launcher’s visual identity.
 
-The source code is published for transparency only. Viewing it grants no licence to use it,
-except for the rights GitHub's Terms of Service require for public repositories (viewing and
-forking on GitHub).
+No part of the software, source code, or Team Zetaverse-owned assets may be
+copied, modified, merged, published, redistributed, sublicensed, sold, or used
+in derivative works, in source, binary, graphical, or font form, without prior
+written permission from Team Zetaverse.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+Official builds published by Team Zetaverse may be downloaded and run for
+personal use.
 
-Third-party libraries bundled in the launcher are under their own licences; see
-THIRD-PARTY-NOTICES.md.
+The source code is published for transparency only. Viewing the source code
+grants no licence to use, copy, modify, redistribute, or incorporate it into
+another project, except for the limited rights required by GitHub's Terms of
+Service for content hosted in public repositories, including viewing and
+forking through GitHub's services.
 
-NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+Team Zetaverse-owned launcher assets and the Team Zetaverse pixel typeface are
+not released under an open-source or open-content licence. Their inclusion in a
+public repository does not grant permission to reuse, redistribute, modify, or
+incorporate them into another project.
+
+Third-party libraries, fonts, assets, and other components included with or used
+by the launcher remain subject to their respective licences and copyright terms.
+See THIRD-PARTY-NOTICES.md for details.
+
+THE SOFTWARE AND TEAM ZETAVERSE-OWNED ASSETS ARE PROVIDED "AS IS", WITHOUT
+WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE,
+ASSETS, OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+NOT AN OFFICIAL MINECRAFT PRODUCT.
+NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
