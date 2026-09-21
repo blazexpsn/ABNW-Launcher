@@ -447,6 +447,21 @@ final class Widgets {
         ImGui.dummy(0, px(8));
     }
 
+    /** Full-size mascot with reserved space for its held prop and idle animation. */
+    static void mascotMessage(final Icons.Icon icon, final String message, final int color) {
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        float width = ImGui.getContentRegionAvailX();
+        float slot = px(88);
+        float textWidth = Math.max(px(40), width - slot);
+        float textHeight = textHeight(Fonts.body, message, textWidth);
+        float height = Math.max(px(72), textHeight);
+        ImDrawList dl = ImGui.getWindowDrawList();
+        Icons.draw(dl, icon, x + px(16), y + (height - px(72)) * 0.5f + px(18), px(48), u32(0xFFFFFF));
+        drawTextWrapped(dl, Fonts.body, x + slot, y + (height - textHeight) * 0.5f, u32(color), message, textWidth);
+        ImGui.dummy(width, height);
+    }
+
     static void cardTitle(final Icons.Icon icon, final String title) {
         if (icon != null && Icons.isPenguin(icon)) {
             float size = px(34);

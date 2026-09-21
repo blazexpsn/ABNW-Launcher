@@ -58,7 +58,7 @@ final class CosmeticsPage {
                 "Supporter cosmetics and the cosmetics store aren't open yet. Keep an eye on the News page.", Icons.Icon.SOON, null);
         } else if (account.isEmpty()) {
             this.hero("cos-signin", width, "ABNW SUPPORTERS", "Sign in to link Patreon",
-                "Sign in with your Microsoft account first, then link your Patreon to unlock supporter cosmetics.", Icons.Icon.CROWN, () -> {
+                "Sign in with your Microsoft account first, then link your Patreon to unlock supporter cosmetics.", Icons.Icon.PENGUIN_KEY, () -> {
                     if (Widgets.primary("cos-signin-button", "Sign in with Microsoft", Icons.Icon.USER, 0, px(48), true)) {
                         this.ui.startSignIn();
                     }
@@ -78,7 +78,7 @@ final class CosmeticsPage {
 
     private void drawLoadingOrError(final float width, final Account account) {
         if (this.error != null && !this.loading) {
-            this.hero("cos-error", width, "COSMETICS", "Couldn't reach cosmetics", this.error, Icons.Icon.ALERT, () -> {
+            this.hero("cos-error", width, "COSMETICS", "Couldn't reach cosmetics", this.error, Icons.Icon.PENGUIN_ALERT, () -> {
                 if (Widgets.secondary("cos-retry", "Try again", Icons.Icon.REFRESH)) {
                     this.reload(account);
                 }
@@ -86,7 +86,7 @@ final class CosmeticsPage {
             return;
         }
         this.hero("cos-loading", width, "COSMETICS", "Checking your cosmetics…", "Confirming " + account.name + " with Minecraft. This only takes a moment.",
-            Icons.Icon.CROWN, null);
+            Icons.Icon.PENGUIN_CLOCK, null);
         Motion.keepAlive();
     }
 

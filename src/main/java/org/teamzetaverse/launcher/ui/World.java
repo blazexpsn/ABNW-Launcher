@@ -182,8 +182,8 @@ final class World {
 
     static String penguinSprite(final Icons.Icon icon) {
         String pose = switch (icon) {
-            case UPDATE -> "alert";
-            case SOON -> "clock";
+            case UPDATE, PENGUIN_ALERT -> "alert";
+            case SOON, PENGUIN_CLOCK -> "clock";
             case PENGUIN_OK -> "ok";
             case PENGUIN_WARN -> "warn";
             case PENGUIN_NEWS -> "news";

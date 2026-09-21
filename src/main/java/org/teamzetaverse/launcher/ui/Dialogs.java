@@ -129,13 +129,30 @@ final class Dialogs {
         if (pixel) {
             Pixel.windowPanel();
         }
-        Widgets.text(Fonts.title, Theme.TEXT, title);
-        ImGui.sameLine();
-        Widgets.alignRight(px(34));
+        Icons.Icon mascot = switch (name) {
+            case NEW_INSTANCE, RENAME -> Icons.Icon.PENGUIN_BOX;
+            case CHANGE_RELEASE -> Icons.Icon.UPDATE;
+            case SIGN_IN -> Icons.Icon.PENGUIN_KEY;
+            case DELETE -> Icons.Icon.PENGUIN_WARN;
+            default -> Icons.Icon.PENGUIN_ALERT;
+        };
+        float headerX = ImGui.getCursorScreenPosX();
+        float headerY = ImGui.getCursorScreenPosY();
+        float headerWidth = ImGui.getContentRegionAvailX();
+        float titleWidth = Math.max(px(80), headerWidth - px(88 + 46));
+        float titleHeight = Widgets.textHeight(Fonts.title, title, titleWidth);
+        float headerHeight = Math.max(px(72), titleHeight);
+        ImDrawList header = ImGui.getWindowDrawList();
+        Icons.draw(header, mascot, headerX + px(16), headerY + (headerHeight - px(72)) * 0.5f + px(18), px(48), u32(0xFFFFFF));
+        Widgets.drawTextWrapped(header, Fonts.title, headerX + px(88), headerY + (headerHeight - titleHeight) * 0.5f,
+            u32(Theme.TEXT), title, titleWidth);
+        ImGui.setCursorScreenPos(headerX + headerWidth - px(34), headerY);
         if (Widgets.iconButton("dialog-close", Icons.Icon.CLOSE, px(34), null, true)) {
             this.onClose(name);
             ImGui.closeCurrentPopup();
         }
+        ImGui.setCursorScreenPos(headerX, headerY);
+        ImGui.dummy(headerWidth, headerHeight);
         if (subtitle != null) {
             ImGui.setCursorPosY(ImGui.getCursorPosY() - px(6));
             ImGui.pushTextWrapPos(px(width) - px(56));
@@ -203,18 +220,18 @@ final class Dialogs {
         float width = ImGui.getContentRegionAvailX();
         if (this.listingLoading) {
             Widgets.progress(-1, width, px(6));
-            Widgets.text(Fonts.small, Theme.MUTED, "Finding builds…");
+            Widgets.mascotMessage(Icons.Icon.PENGUIN_CLOCK, "Finding builds…", Theme.MUTED);
             return null;
         }
         if (this.listingError != null) {
-            Widgets.textWrapped(Fonts.body, Theme.ERROR, this.listingError);
+            Widgets.mascotMessage(Icons.Icon.PENGUIN_ALERT, this.listingError, Theme.ERROR);
             if (Widgets.secondary("releases-retry", "Try again", Icons.Icon.REFRESH)) {
                 this.loadListing();
             }
             return null;
         }
         if (this.listing == null || this.listing.releases().isEmpty()) {
-            Widgets.textWrapped(Fonts.body, Theme.MUTED, "No builds have been published yet. Check back soon.");
+            Widgets.mascotMessage(Icons.Icon.PENGUIN_EMPTY, "No builds have been published yet. Check back soon.", Theme.MUTED);
             return null;
         }
         float rowHeight = px(62);
