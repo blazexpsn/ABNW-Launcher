@@ -8,7 +8,8 @@ final class Icons {
     enum Icon {
         HOME, INSTANCES, NEWS, SETTINGS, PLAY, STOP, PLUS, IMPORT, EXPORT, FOLDER, TRASH, EDIT, USER, CLOSE,
         CHEVRON_LEFT, CHEVRON_RIGHT, CHEVRON_DOWN, REFRESH, CHECK, TERMINAL, SPARK, MEGAPHONE, CLOCK, IMAGE,
-        LOGOUT, EXTERNAL, ALERT, COPY, CHIP, COFFEE, WRENCH, CUBE, DISCORD_WAVE, DOWNLOAD, SWAP, CROWN, HEART, UPDATE, SOON
+        LOGOUT, EXTERNAL, ALERT, COPY, CHIP, COFFEE, WRENCH, CUBE, DISCORD_WAVE, DOWNLOAD, SWAP, CROWN, HEART, UPDATE, SOON, PENGUIN_OK, PENGUIN_WARN, PENGUIN_NEWS, PENGUIN_EMPTY, PENGUIN_BOX,
+        PENGUIN_PLAY, PENGUIN_KEY
     }
 
     private static final float PI = (float)Math.PI;
@@ -24,9 +25,14 @@ final class Icons {
         ImGui.dummy(size, Math.max(size, ImGui.getTextLineHeight()));
     }
 
+    static boolean isPenguin(final Icon icon) {
+        return World.penguinSprite(icon) != null;
+    }
+
     static void draw(final ImDrawList dl, final Icon icon, final float x, final float y, final float size, final int color) {
-        if (icon == Icon.UPDATE || icon == Icon.SOON) {
-            World.penguinHolding(dl, icon == Icon.UPDATE, x, y, size);
+        String penguin = World.penguinSprite(icon);
+        if (penguin != null) {
+            World.penguinHolding(dl, penguin, x, y, size);
             return;
         }
         if (Pixel.icon(dl, icon.ordinal(), x, y, size, color)) {

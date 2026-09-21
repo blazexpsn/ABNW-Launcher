@@ -115,8 +115,7 @@ final class InstancesPage {
             float icon = px(56);
             float x = ImGui.getCursorScreenPosX() + (inner - icon) * 0.5f;
             float y = ImGui.getCursorScreenPosY();
-            Pixel.dot(dl, x + icon * 0.5f, y + icon * 0.5f, icon * 0.8f, u32(Theme.EMBER, 0.10f));
-            Icons.draw(dl, Icons.Icon.INSTANCES, x, y, icon, u32(Theme.EMBER));
+            Icons.draw(dl, Icons.Icon.PENGUIN_EMPTY, x, y, icon, u32(0xFFFFFF));
             ImGui.dummy(inner, icon + px(16));
             this.centered(Fonts.heading, Theme.TEXT, "No worlds yet");
             this.centered(Fonts.body, Theme.MUTED, "Create an instance and ABNW installs everything it needs.");

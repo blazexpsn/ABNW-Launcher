@@ -23,8 +23,6 @@ final class World {
     private static final String DEEPSLATE = "resource:/assets/ui/deepslate.png";
     private static final String DEEP = "resource:/assets/ui/deep.png";
     private static final String PENGUIN = "resource:/assets/ui/penguin.png";
-    private static final String PENGUIN_ALERT = "resource:/assets/ui/penguin_alert.png";
-    private static final String PENGUIN_CLOCK = "resource:/assets/ui/penguin_clock.png";
     private static final String[] CLOUDS = {"resource:/assets/ui/cloud0.png", "resource:/assets/ui/cloud1.png", "resource:/assets/ui/cloud2.png"};
 
     private static final float SOIL_TOP = HORIZON + 4f;
@@ -182,10 +180,25 @@ final class World {
         dl.addImage(sheet.id(), px0, py0, px0 + w, py0 + h, 0f, 0f, (float)PENGUIN_W / sheet.width(), 1f, u32(0xFFFFFF));
     }
 
-    static void penguinHolding(final ImDrawList dl, final boolean alert, final float x, final float y, final float box) {
-        ImageCache.Texture sprite = Pixel.texture(alert ? PENGUIN_ALERT : PENGUIN_CLOCK);
+    static String penguinSprite(final Icons.Icon icon) {
+        String pose = switch (icon) {
+            case UPDATE -> "alert";
+            case SOON -> "clock";
+            case PENGUIN_OK -> "ok";
+            case PENGUIN_WARN -> "warn";
+            case PENGUIN_NEWS -> "news";
+            case PENGUIN_EMPTY -> "empty";
+            case PENGUIN_BOX -> "box";
+            case PENGUIN_PLAY -> "play";
+            case PENGUIN_KEY -> "key";
+            default -> null;
+        };
+        return pose == null ? null : "resource:/assets/ui/penguin_" + pose + ".png";
+    }
+
+    static void penguinHolding(final ImDrawList dl, final String key, final float x, final float y, final float box) {
+        ImageCache.Texture sprite = Pixel.texture(key);
         if (sprite == null) {
-            Icons.draw(dl, alert ? Icons.Icon.DOWNLOAD : Icons.Icon.CLOCK, x, y, box, u32(0xFFFFFF));
             return;
         }
         float s = Math.max(1f, Math.round(box * 1.2f / sprite.height()));

@@ -50,11 +50,11 @@ final class Announcements {
 
         Icons.Icon icon() {
             return switch (this.level == null ? "" : this.level.toLowerCase()) {
-                case "success" -> Icons.Icon.CHECK;
-                case "warning" -> Icons.Icon.ALERT;
+                case "success" -> Icons.Icon.PENGUIN_OK;
+                case "warning" -> Icons.Icon.PENGUIN_WARN;
                 case "release", "update" -> Icons.Icon.UPDATE;
-                case "launch" -> Icons.Icon.SPARK;
-                default -> Icons.Icon.MEGAPHONE;
+                case "launch" -> Icons.Icon.PENGUIN_PLAY;
+                default -> Icons.Icon.PENGUIN_NEWS;
             };
         }
     }
@@ -165,8 +165,12 @@ final class Announcements {
             Pixel.rect(dl, x, y + px(14), x + px(3), y + h - px(14), u32(accent));
             float ix = x + pad;
             float iy = y + (h - iconBox) * 0.5f;
-            Pixel.rect(dl, ix, iy, ix + iconBox, iy + iconBox, u32(accent, 0.16f));
-            Icons.draw(dl, entry.icon(), ix + px(9), iy + px(9), iconBox - px(18), u32(accent));
+            if (Icons.isPenguin(entry.icon())) {
+                Icons.draw(dl, entry.icon(), ix, iy, iconBox, u32(0xFFFFFF));
+            } else {
+                Pixel.rect(dl, ix, iy, ix + iconBox, iy + iconBox, u32(accent, 0.16f));
+                Icons.draw(dl, entry.icon(), ix + px(9), iy + px(9), iconBox - px(18), u32(accent));
+            }
             float tx = ix + iconBox + px(14);
             float contentHeight = Fonts.label.size() + (messageHeight > 0 ? px(4) + messageHeight : 0);
             float ty = y + (h - contentHeight) * 0.5f;
@@ -237,8 +241,12 @@ final class Announcements {
                 float y = ImGui.getCursorScreenPosY();
                 float iconBox = px(34);
                 ImDrawList dl = ImGui.getWindowDrawList();
-                Pixel.rect(dl, x, y, x + iconBox, y + iconBox, u32(entry.color(), 0.16f));
-                Icons.draw(dl, entry.icon(), x + px(8), y + px(8), iconBox - px(16), u32(entry.color()));
+                if (Icons.isPenguin(entry.icon())) {
+                    Icons.draw(dl, entry.icon(), x, y, iconBox, u32(0xFFFFFF));
+                } else {
+                    Pixel.rect(dl, x, y, x + iconBox, y + iconBox, u32(entry.color(), 0.16f));
+                    Icons.draw(dl, entry.icon(), x + px(8), y + px(8), iconBox - px(16), u32(entry.color()));
+                }
                 ImGui.setCursorScreenPos(x + iconBox + px(12), y - px(1));
                 ImGui.beginGroup();
                 float textWidth = width - px(32) - iconBox - px(12) - px(28);

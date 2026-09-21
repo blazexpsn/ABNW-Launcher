@@ -448,7 +448,14 @@ final class Widgets {
     }
 
     static void cardTitle(final Icons.Icon icon, final String title) {
-        if (icon != null) {
+        if (icon != null && Icons.isPenguin(icon)) {
+            float size = px(34);
+            float x = ImGui.getCursorScreenPosX();
+            float y = ImGui.getCursorScreenPosY();
+            Icons.draw(ImGui.getWindowDrawList(), icon, x, y + Fonts.heading.size() - size, size, u32(0xFFFFFF));
+            ImGui.dummy(size * 1.2f, Fonts.heading.size());
+            ImGui.sameLine(0, px(12));
+        } else if (icon != null) {
             float size = px(18);
             float x = ImGui.getCursorScreenPosX();
             float y = ImGui.getCursorScreenPosY();

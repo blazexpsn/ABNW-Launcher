@@ -238,6 +238,7 @@ final class HomePage {
         List<Feed.News> news = this.ui.feed.news;
         if (news.isEmpty()) {
             if (Widgets.beginCard("home-news-empty", width, 0)) {
+                Widgets.cardTitle(Icons.Icon.PENGUIN_NEWS, "No news yet");
                 Widgets.textWrapped(Fonts.body, Theme.MUTED, "News from the ABNW team will show up here.");
             }
             Widgets.endCard();

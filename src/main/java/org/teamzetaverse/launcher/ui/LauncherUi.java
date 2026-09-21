@@ -285,23 +285,24 @@ public final class LauncherUi {
         int colour;
         if (!running.isEmpty()) {
             message = running.get(0).title();
-            icon = Icons.Icon.DOWNLOAD;
+            icon = Icons.Icon.PENGUIN_BOX;
             colour = Theme.SUN;
         } else if (playing != null) {
             message = "Playing " + selected.get().name;
-            icon = Icons.Icon.PLAY;
+            icon = Icons.Icon.PENGUIN_PLAY;
             colour = Theme.OK;
         } else if (this.currentAccount().isEmpty()) {
             message = "Sign in to play";
-            icon = Icons.Icon.USER;
+            icon = Icons.Icon.PENGUIN_KEY;
             colour = Theme.MUTED;
         } else {
             message = "Ready to play";
-            icon = Icons.Icon.CHECK;
+            icon = Icons.Icon.PENGUIN_OK;
             colour = Theme.OK;
         }
-        Icons.draw(dl, icon, x + u * 6, iconY, iconSize, u32(colour));
-        float textX = x + u * 6 + iconSize + u * 5;
+        float penguinBox = h - u * 4;
+        Icons.draw(dl, icon, x + u * 6, y + h - u * 2 - penguinBox, penguinBox, u32(colour));
+        float textX = x + u * 6 + penguinBox * 1.35f + u * 5;
         PixelText.draw(dl, textX, mid, PixelText.fit(message.toUpperCase(), u, w * 0.36f), u, u32(Theme.MUTED));
 
         if (!running.isEmpty()) {

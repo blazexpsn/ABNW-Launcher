@@ -42,7 +42,7 @@ final class NewsPage {
         List<Feed.News> news = this.ui.feed.news;
         if (news.isEmpty()) {
             if (Widgets.beginCard("news-empty", width, 0, Theme.SURFACE, px(32), px(32))) {
-                Widgets.cardTitle(Icons.Icon.NEWS, "Nothing here yet");
+                Widgets.cardTitle(Icons.Icon.PENGUIN_EMPTY, "Nothing here yet");
                 Widgets.textWrapped(Fonts.body, Theme.MUTED, "Check back soon. Announcements, patch notes and sneak peeks will land here.");
             }
             Widgets.endCard();
@@ -56,7 +56,7 @@ final class NewsPage {
     private void drawChangelog(final String id, final Changelog changelog, final float width, final String product) {
         if (changelog.entries.isEmpty()) {
             if (Widgets.beginCard(id + "-empty", width, 0, Theme.SURFACE, px(32), px(32))) {
-                Widgets.cardTitle(Icons.Icon.CLOCK, "No changes listed yet");
+                Widgets.cardTitle(Icons.Icon.SOON, "No changes listed yet");
                 Widgets.textWrapped(Fonts.body, Theme.MUTED, "The " + product + " changelog will appear here with the next update.");
             }
             Widgets.endCard();
