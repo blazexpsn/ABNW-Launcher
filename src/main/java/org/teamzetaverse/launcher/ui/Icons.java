@@ -25,6 +25,9 @@ final class Icons {
     }
 
     static void draw(final ImDrawList dl, final Icon icon, final float x, final float y, final float size, final int color) {
+        if (Pixel.icon(dl, icon.ordinal(), x, y, size, color)) {
+            return;
+        }
         final float u = size / 24f;
         final float t = Math.max(1.4f, size / 12.5f);
         switch (icon) {

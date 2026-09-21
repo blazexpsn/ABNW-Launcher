@@ -69,6 +69,9 @@ public final class LauncherUi {
     final Map<String, GameProcess> running = new ConcurrentHashMap<>();
     final ImageCache images;
     final Showcase showcase;
+    final World world = new World();
+    private float contentScroll;
+    private boolean resetScroll;
     final Announcements announcements;
     final DiscordPresence discord;
     final List<String> errors = new ArrayList<>();
@@ -110,6 +113,7 @@ public final class LauncherUi {
         this.selectedInstanceId = config.selectedInstance;
         this.images = new ImageCache(paths.cache().resolve("images"));
         Widgets.useImages(this.images);
+        Pixel.useImages(this.images);
         this.showcase = new Showcase(this.images);
         this.announcements = new Announcements(config);
         this.discord = new DiscordPresence(BuildInfo.DISCORD_CLIENT_ID, config.discordPresence);
@@ -164,97 +168,80 @@ public final class LauncherUi {
         boolean open = ImGui.begin("ABNW Launcher", flags);
         ImGui.popStyleVar(2);
         if (open) {
-            float sidebarWidth = px(252);
-            this.drawSidebar(sidebarWidth);
-            ImGui.sameLine(0, 0);
-            this.drawContent();
+            float vx = ImGui.getWindowPosX();
+            float vy = ImGui.getWindowPosY();
+            float vw = ImGui.getWindowWidth();
+            float vh = ImGui.getWindowHeight();
+            float bar = topBarHeight();
+            float status = statusBarHeight();
+            ImGui.setCursorScreenPos(vx, vy + bar);
+            this.drawContent(vy, vh - bar - status);
+            this.drawTopBar(vx, vy, vw, bar);
+            this.drawStatusBar(vx, vy + vh - status, vw, status);
+            ImDrawList front = ImGui.getWindowDrawList();
+            float edge = Pixel.unit();
+            front.addRectFilled(vx, vy + bar, vx + edge, vy + vh - status, u32(Theme.BORDER));
+            front.addRectFilled(vx + vw - edge, vy + bar, vx + vw, vy + vh - status, u32(Theme.BORDER));
             this.dialogs.draw();
         }
         ImGui.end();
 
         float tasksHeight = this.drawTasks();
-        this.announcements.drawToasts(tasksHeight);
+        this.announcements.drawToasts(tasksHeight + statusBarHeight());
     }
 
-    private void drawSidebar(final float width) {
-        float[] bg = Theme.rgba(Theme.SIDEBAR, 1f);
-        ImGui.pushStyleColor(ImGuiCol.ChildBg, bg[0], bg[1], bg[2], 1f);
-        ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(18), px(20));
-        ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, 0);
-        ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(8), px(6));
-        boolean open = ImGui.beginChild("sidebar", width, 0, ImGuiChildFlags.AlwaysUseWindowPadding, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.popStyleVar(3);
-        ImGui.popStyleColor();
-        if (open) {
-            ImDrawList dl = ImGui.getWindowDrawList();
-            float wx = ImGui.getWindowPosX();
-            float wy = ImGui.getWindowPosY();
-            float wh = ImGui.getWindowHeight();
-            dl.addLine(wx + width - 1, wy, wx + width - 1, wy + wh, u32(Theme.BORDER_SOFT), 1f);
+    static float topBarHeight() {
+        return Pixel.unit() * 34f;
+    }
 
-            float logoWidth = ImGui.getContentRegionAvailX();
-            ImageCache.Texture logo = this.images.get(Showcase.FALLBACK, 0, true);
-            float logoHeight = logo != null ? logoWidth / logo.aspect() : logoWidth * 0.73f;
-            float lx = ImGui.getCursorScreenPosX();
-            float ly = ImGui.getCursorScreenPosY();
-            boolean logoClicked = ImGui.invisibleButton("logo", logoWidth, logoHeight);
-            boolean logoHovered = ImGui.isItemHovered();
-            float glow = Motion.hover("logo#hover", logoHovered);
-            if (logoHovered) {
-                ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
-            }
-            if (glow > 0.01f) {
-                for (int i = 3; i >= 1; i--) {
-                    float grow = px(3) * i * glow;
-                    dl.addRectFilled(lx - grow, ly - grow, lx + logoWidth + grow, ly + logoHeight + grow, u32(Theme.EMBER, 0.06f * glow / i), px(14) + grow);
-                }
-            }
-            if (logo != null) {
-                dl.addImageRounded(logo.id(), lx, ly, lx + logoWidth, ly + logoHeight, 0, 0, 1, 1, u32(0xFFFFFF), px(14), imgui.flag.ImDrawFlags.RoundCornersAll);
-            } else {
-                dl.addRectFilled(lx, ly, lx + logoWidth, ly + logoHeight, u32(Theme.EMBER_DEEP), px(14));
-            }
-            dl.addRect(lx, ly, lx + logoWidth, ly + logoHeight, u32(0xFFFFFF, 0.08f), px(14), 0, px(1));
-            if (logoClicked) {
-                this.navigate(Page.HOME);
-            }
-            ImGui.dummy(0, px(18));
+    static float statusBarHeight() {
+        return Pixel.unit() * 20f;
+    }
 
-            this.navItem(Page.HOME, Icons.Icon.HOME, "Home", null);
-            String count = this.instances.all().isEmpty() ? null : String.valueOf(this.instances.all().size());
-            this.navItem(Page.INSTANCES, Icons.Icon.INSTANCES, "Instances", count);
-            this.navItem(Page.NEWS, Icons.Icon.NEWS, "News", null);
-            this.navItem(Page.COSMETICS, Icons.Icon.CROWN, "Cosmetics", null);
-            this.navItem(Page.SETTINGS, Icons.Icon.SETTINGS, "Settings", null);
+    public double idleWait() {
+        return 0.05;
+    }
 
-            UpdateChecker.LauncherUpdate update = this.updateStatus.launcherUpdate();
-            float accountHeight = px(58);
-            float updateHeight = update != null ? px(62) + px(10) : 0;
-            float footer = accountHeight + updateHeight + px(22);
-            float targetY = ImGui.getWindowHeight() - px(20) - footer;
-            if (ImGui.getCursorPosY() < targetY) {
-                ImGui.setCursorPosY(targetY);
-            }
-            if (update != null) {
-                this.drawUpdateCard(update);
-                ImGui.dummy(0, px(10));
-            }
-            this.drawAccount();
-            ImGui.dummy(0, px(6));
-            String version = BuildInfo.isDevBuild() ? "Development build" : "Launcher v" + BuildInfo.VERSION;
-            float vw = Widgets.textWidth(Fonts.tiny, version);
-            ImGui.setCursorPosX(ImGui.getCursorPosX() + (ImGui.getContentRegionAvailX() - vw) * 0.5f);
-            Widgets.text(Fonts.tiny, Theme.FAINT, version);
+    private void drawTopBar(final float x, final float y, final float w, final float h) {
+        ImDrawList dl = ImGui.getWindowDrawList();
+        float u = Pixel.unit();
+        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.SIDEBAR));
+        Pixel.tile(dl, Pixel.STARS, x, y, x + w, y + h - u * 2, u, u32(0xFFFFFF, 0.25f));
+        dl.addRectFilled(x, y + h - u * 2, x + w, y + h - u, u32(0x10041A));
+        dl.addRectFilled(x, y + h - u, x + w, y + h, u32(Theme.BORDER));
+
+        float markScale = u * 2f;
+        float markY = y + (h - u * 2 - PixelText.height(markScale)) * 0.5f;
+        ImGui.setCursorScreenPos(x + u * 8, y);
+        float markWidth = PixelText.width("ABNW", markScale);
+        if (ImGui.invisibleButton("wordmark", markWidth, h - u * 2)) {
+            this.navigate(Page.HOME);
         }
-        ImGui.endChild();
+        if (ImGui.isItemHovered()) {
+            ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
+        }
+        PixelText.draw(dl, x + u * 8, markY, "ABNW", markScale, u32(0xC100FF));
+
+        float tx = x + u * 8 + markWidth + u * 18;
+        float tabH = h - u * 12;
+        float tabY = y + u * 4;
+        tx = this.drawTab(Page.HOME, Icons.Icon.HOME, "Home", tx, tabY, tabH);
+        tx = this.drawTab(Page.INSTANCES, Icons.Icon.INSTANCES, "Instances", tx, tabY, tabH);
+        tx = this.drawTab(Page.NEWS, Icons.Icon.NEWS, "News", tx, tabY, tabH);
+        tx = this.drawTab(Page.COSMETICS, Icons.Icon.CROWN, "Cosmetics", tx, tabY, tabH);
+        this.drawTab(Page.SETTINGS, Icons.Icon.SETTINGS, "Settings", tx, tabY, tabH);
+
+        float accountW = Math.min(px(236), w * 0.24f);
+        this.drawAccount(x + w - accountW - u * 6, tabY, accountW, tabH);
     }
 
-    private void navItem(final Page target, final Icons.Icon icon, final String label, final String badge) {
-        String id = "nav-" + target.name();
-        float w = ImGui.getContentRegionAvailX();
-        float h = px(44);
-        float x = ImGui.getCursorScreenPosX();
-        float y = ImGui.getCursorScreenPosY();
+    private float drawTab(final Page target, final Icons.Icon icon, final String label, final float x, final float y, final float h) {
+        float u = Pixel.unit();
+        String text = label.toUpperCase();
+        float iconSize = u * 16f;
+        float w = u * 10 + iconSize + u * 4 + PixelText.width(text, u) + u * 10;
+        ImGui.setCursorScreenPos(x, y);
+        String id = "tab-" + target.name();
         boolean clicked = ImGui.invisibleButton(id, w, h);
         boolean hovered = ImGui.isItemHovered();
         if (hovered) {
@@ -264,64 +251,104 @@ public final class LauncherUi {
         float hv = Motion.hover(id + "#hover", hovered);
         float av = Motion.to(id + "#active", active ? 1f : 0f, 14f);
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + w, y + h, u32(0xFFFFFF, 0.045f * hv * (1f - av)), px(12));
+        float lift = Math.round(u * (1f - av) * hv);
+        if (hv * (1f - av) > 0.01f) {
+            Pixel.nine(dl, Pixel.PANEL_HOVER, x, y, x + w, y + h, 4, u32(0xFFFFFF, hv * (1f - av)));
+        }
         if (av > 0.01f) {
-            dl.addRectFilledMultiColor(x + px(6), y, x + w * 0.9f, y + h, u32(Theme.EMBER, 0.16f * av), u32(Theme.EMBER, 0.02f * av),
-                u32(Theme.EMBER, 0.02f * av), u32(Theme.EMBER, 0.16f * av));
-            dl.addRect(x, y, x + w, y + h, u32(Theme.EMBER, 0.22f * av), px(12), 0, px(1));
-            float barH = h * 0.5f * av;
-            dl.addRectFilled(x, y + (h - barH) * 0.5f, x + px(3), y + (h + barH) * 0.5f, u32(Theme.EMBER, av), px(2));
+            Pixel.three(dl, Pixel.BUTTON_PRIMARY, x, y, x + w, y + h, 11, u32(0xFFFFFF, av));
         }
-        int iconColor = u32(Theme.mix(Theme.mix(Theme.MUTED, Theme.TEXT, hv), Theme.EMBER, av));
-        int textColor = u32(Theme.mix(Theme.MUTED, Theme.TEXT, Math.max(hv, av)));
-        float iconSize = px(19);
-        Icons.draw(dl, icon, x + px(14), y + (h - iconSize) * 0.5f, iconSize, iconColor);
-        Widgets.drawText(dl, Fonts.label, x + px(46), y + (h - Fonts.label.size()) * 0.5f - px(0.5f), textColor, label);
-        if (badge != null) {
-            float bw = Math.max(px(22), Widgets.textWidth(Fonts.tiny, badge) + px(12));
-            float bh = px(20);
-            float bx = x + w - px(12) - bw;
-            float by = y + (h - bh) * 0.5f;
-            dl.addRectFilled(bx, by, bx + bw, by + bh, u32(active ? Theme.EMBER : Theme.SURFACE_HOVER, active ? 0.9f : 1f), bh * 0.5f);
-            float tw = Widgets.textWidth(Fonts.tiny, badge);
-            Widgets.drawText(dl, Fonts.tiny, bx + (bw - tw) * 0.5f, by + (bh - Fonts.tiny.size()) * 0.5f - px(0.5f),
-                u32(active ? Theme.ON_EMBER : Theme.MUTED), badge);
-        }
+        int tint = u32(Theme.mix(Theme.mix(0x9670B4, Theme.TEXT, hv), 0xFFFFFF, av));
+        float face = h * (av > 0.5f ? 0.82f : 1f);
+        Icons.draw(dl, icon, x + u * 10, y + (face - iconSize) * 0.5f - lift, iconSize, tint);
+        PixelText.draw(dl, x + u * 10 + iconSize + u * 4, y + (face - PixelText.height(u)) * 0.5f - lift, text, u, tint);
         if (clicked) {
             this.navigate(target);
         }
+        return x + w + u * 3;
     }
 
-    private void drawUpdateCard(final UpdateChecker.LauncherUpdate update) {
-        float w = ImGui.getContentRegionAvailX();
-        float h = px(62);
-        float x = ImGui.getCursorScreenPosX();
-        float y = ImGui.getCursorScreenPosY();
-        boolean clicked = ImGui.invisibleButton("launcher-update", w, h);
-        boolean hovered = ImGui.isItemHovered();
-        if (hovered) {
-            ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
-        }
-        float hv = Motion.hover("launcher-update#hover", hovered);
+    private void drawStatusBar(final float x, final float y, final float w, final float h) {
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilledMultiColor(x, y, x + w, y + h, u32(Theme.EMBER, 0.22f + 0.08f * hv), u32(Theme.SUN, 0.10f + 0.06f * hv),
-            u32(Theme.SUN, 0.10f + 0.06f * hv), u32(Theme.EMBER, 0.22f + 0.08f * hv));
-        dl.addRect(x, y, x + w, y + h, u32(Theme.EMBER, 0.55f + 0.3f * hv), px(12), 0, px(1));
-        float iconSize = px(20);
-        Icons.draw(dl, Icons.Icon.DOWNLOAD, x + px(14), y + (h - iconSize) * 0.5f, iconSize, u32(Theme.SUN));
-        Widgets.drawText(dl, Fonts.label, x + px(44), y + px(12), u32(Theme.TEXT), "Update ready");
-        Widgets.drawText(dl, Fonts.small, x + px(44), y + px(12) + Fonts.label.size() + px(2), u32(Theme.MUTED), "Launcher v" + update.version());
-        if (clicked) {
-            Desktop.browse(update.url());
+        float u = Pixel.unit();
+        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.SIDEBAR));
+        dl.addRectFilled(x, y, x + w, y + u, u32(Theme.BORDER));
+        float mid = y + u + (h - u - PixelText.height(u)) * 0.5f;
+        float iconSize = u * 8f;
+        float iconY = y + u + (h - u - iconSize) * 0.5f;
+
+        List<Progress> running = this.tasks.running();
+        Optional<Instance> selected = this.selectedInstance();
+        GameProcess playing = selected.map(i -> this.running.get(i.id)).orElse(null);
+        String message;
+        Icons.Icon icon;
+        int colour;
+        if (!running.isEmpty()) {
+            message = running.get(0).title();
+            icon = Icons.Icon.DOWNLOAD;
+            colour = Theme.SUN;
+        } else if (playing != null) {
+            message = "Playing " + selected.get().name;
+            icon = Icons.Icon.PLAY;
+            colour = Theme.OK;
+        } else if (this.currentAccount().isEmpty()) {
+            message = "Sign in to play";
+            icon = Icons.Icon.USER;
+            colour = Theme.MUTED;
+        } else {
+            message = "Ready to play";
+            icon = Icons.Icon.CHECK;
+            colour = Theme.OK;
+        }
+        Icons.draw(dl, icon, x + u * 6, iconY, iconSize, u32(colour));
+        float textX = x + u * 6 + iconSize + u * 5;
+        PixelText.draw(dl, textX, mid, PixelText.fit(message.toUpperCase(), u, w * 0.36f), u, u32(Theme.MUTED));
+
+        if (!running.isEmpty()) {
+            float fraction = (float)running.get(0).fraction();
+            float barW = Math.min(px(260), w * 0.24f);
+            float bx = x + (w - barW) * 0.5f;
+            float by = y + u + (h - u - u * 4) * 0.5f;
+            if (!Pixel.three(dl, Pixel.PROGRESS_TRACK, bx, by, bx + barW, by + u * 4, 2, u32(0xFFFFFF))) {
+                Pixel.rect(dl, bx, by, bx + barW, by + u * 4, u32(0xFFFFFF, 0.08f));
+            }
+            float fill = fraction < 0 ? barW * (0.5f + 0.5f * (float)Math.sin(ImGui.getTime() * 3.0)) : barW * Math.min(1f, fraction);
+            if (fill > u * 4) {
+                Pixel.three(dl, Pixel.PROGRESS_FILL, bx, by, bx + fill, by + u * 4, 2, u32(0xFFFFFF));
+            }
+            Motion.keepAlive();
+        }
+
+        String version = BuildInfo.isDevBuild() ? "DEVELOPMENT BUILD" : "LAUNCHER " + BuildInfo.VERSION;
+        float vw = PixelText.width(version, u);
+        float right = x + w - u * 6;
+        PixelText.draw(dl, right - vw, mid, version, u, u32(Theme.FAINT));
+        UpdateChecker.LauncherUpdate update = this.updateStatus.launcherUpdate();
+        if (update != null) {
+            String label = "UPDATE READY";
+            float lw = PixelText.width(label, u) + iconSize + u * 16;
+            float lx = right - vw - u * 10 - lw;
+            float ly = y + u * 3;
+            ImGui.setCursorScreenPos(lx, ly);
+            boolean clicked = ImGui.invisibleButton("status-update", lw, h - u * 5);
+            boolean hovered = ImGui.isItemHovered();
+            if (hovered) {
+                ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
+                Widgets.tooltip("Get launcher v" + update.version());
+            }
+            float hv = Motion.hover("status-update#hover", hovered);
+            Pixel.three(dl, Pixel.BUTTON_PRIMARY, lx, ly, lx + lw, ly + h - u * 5, 11, u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv)));
+            Icons.draw(dl, Icons.Icon.DOWNLOAD, lx + u * 6, ly + (h - u * 5 - iconSize) * 0.4f, iconSize, u32(0xFFFFFF));
+            PixelText.draw(dl, lx + u * 6 + iconSize + u * 4, ly + (h - u * 5) * 0.41f - PixelText.height(u) * 0.5f, label, u, u32(0xFFFFFF));
+            if (clicked) {
+                Desktop.browse(update.url());
+            }
         }
     }
 
-    private void drawAccount() {
+    private void drawAccount(final float x, final float y, final float w, final float h) {
         Optional<Account> account = this.currentAccount();
-        float w = ImGui.getContentRegionAvailX();
-        float h = px(58);
-        float x = ImGui.getCursorScreenPosX();
-        float y = ImGui.getCursorScreenPosY();
+        ImGui.setCursorScreenPos(x, y);
         boolean clicked = ImGui.invisibleButton("account", w, h);
         boolean hovered = ImGui.isItemHovered();
         if (hovered) {
@@ -329,20 +356,26 @@ public final class LauncherUi {
         }
         float hv = Motion.hover("account#hover", hovered || ImGui.isPopupOpen("account-menu"));
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.mix(Theme.SURFACE, Theme.SURFACE_HI, hv)), px(14));
-        dl.addRect(x, y, x + w, y + h, u32(Theme.BORDER_SOFT), px(14), 0, px(1));
-        float avatar = px(36);
-        float ax = x + px(11);
+        Pixel.card(dl, x, y, x + w, y + h, hv, u32(Theme.mix(Theme.SURFACE, Theme.SURFACE_HI, hv)));
+        float avatar = h - Pixel.unit() * 8;
+        float ax = x + Pixel.unit() * 5;
         float ay = y + (h - avatar) * 0.5f;
         String name = account.map(a -> a.name).orElse("Sign in");
         if (account.isPresent()) {
-            dl.addRectFilledMultiColor(ax, ay, ax + avatar, ay + avatar, u32(Theme.EMBER), u32(Theme.SUN), u32(Theme.EMBER_LO), u32(Theme.MAROON));
-            dl.addRect(ax - px(0.5f), ay - px(0.5f), ax + avatar + px(0.5f), ay + avatar + px(0.5f), u32(Theme.SURFACE, 1f), px(10), 0, px(3));
-            String initial = name.isEmpty() ? "?" : name.substring(0, 1).toUpperCase();
-            float iw = Widgets.textWidth(Fonts.heading, initial);
-            Widgets.drawText(dl, Fonts.heading, ax + (avatar - iw) * 0.5f, ay + (avatar - Fonts.heading.size()) * 0.5f - px(1), u32(Theme.ON_EMBER), initial);
+            Pixel.rect(dl, ax, ay, ax + avatar, ay + avatar, u32(Theme.SURFACE_HOVER));
+            String headKey = account.get().devOffline ? null : PlayerHead.key(account.get().uuid);
+            ImageCache.Texture head = headKey == null ? null : this.images.get(headKey, 0, true);
+            if (head != null) {
+                float scale = Math.max(1f, (float)Math.floor(avatar / head.width()));
+                float size = head.width() * scale;
+                float hx = Math.round(ax + (avatar - size) * 0.5f);
+                float hy = Math.round(ay + (avatar - size) * 0.5f);
+                dl.addImage(head.id(), hx, hy, hx + size, hy + size, 0f, 0f, 1f, 1f, u32(0xFFFFFF));
+            } else {
+                World.penguinIcon(dl, ax, ay, avatar);
+            }
         } else {
-            dl.addRectFilled(ax, ay, ax + avatar, ay + avatar, u32(Theme.SURFACE_HOVER), px(10));
+            Pixel.rect(dl, ax, ay, ax + avatar, ay + avatar, u32(Theme.SURFACE_HOVER));
             Icons.draw(dl, Icons.Icon.USER, ax + px(8), ay + px(8), avatar - px(16), u32(Theme.MUTED));
         }
         float tx = ax + avatar + px(11);
@@ -358,8 +391,8 @@ public final class LauncherUi {
                 ImGui.openPopup("account-menu");
             }
         }
-        ImGui.setNextWindowPos(x, y - px(8), 0, 0f, 1f);
-        ImGui.setNextWindowSize(w, 0);
+        ImGui.setNextWindowPos(x + w, y + h + px(8), 0, 1f, 0f);
+        ImGui.setNextWindowSize(Math.max(w, px(260)), 0);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(8), px(8));
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(4), px(4));
         if (ImGui.beginPopup("account-menu")) {
@@ -398,7 +431,7 @@ public final class LauncherUi {
         }
         ImDrawList dl = ImGui.getWindowDrawList();
         if (hovered) {
-            dl.addRectFilled(x, y, x + w, y + h, u32(0xFFFFFF, 0.06f), px(9));
+            Pixel.rect(dl, x, y, x + w, y + h, u32(0xFFFFFF, 0.06f));
         }
         int color = u32(highlighted ? Theme.EMBER : hovered ? Theme.TEXT : Theme.MUTED);
         Icons.draw(dl, icon, x + px(10), y + (h - px(16)) * 0.5f, px(16), color);
@@ -407,13 +440,21 @@ public final class LauncherUi {
         return clicked;
     }
 
-    private void drawContent() {
+    private void drawContent(final float windowTop, final float height) {
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(36), px(30));
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(12), px(10));
         ImGui.pushStyleVar(ImGuiStyleVar.ScrollbarSize, px(8));
-        boolean open = ImGui.beginChild("content", 0, 0, ImGuiChildFlags.AlwaysUseWindowPadding, 0);
+        boolean open = ImGui.beginChild("content", 0, height, ImGuiChildFlags.AlwaysUseWindowPadding, 0);
         ImGui.popStyleVar(3);
         if (open) {
+            if (this.resetScroll) {
+                ImGui.setScrollY(0);
+                this.resetScroll = false;
+            }
+            this.contentScroll = ImGui.getScrollY();
+            float cx = ImGui.getWindowPosX();
+            float cy = ImGui.getWindowPosY();
+            this.world.draw(ImGui.getWindowDrawList(), cx, windowTop, cx + ImGui.getWindowWidth(), cy + ImGui.getWindowHeight(), this.page, this.contentScroll);
             float alpha = Motion.to("page#alpha", 1f, 11f);
             ImGui.pushStyleVar(ImGuiStyleVar.Alpha, Math.max(0.01f, alpha));
             ImGui.setCursorPosY(ImGui.getCursorPosY() + (1f - alpha) * px(12));
@@ -429,23 +470,23 @@ public final class LauncherUi {
         }
         ImGui.endChild();
     }
-
     private float drawTasks() {
         List<Progress> running = this.tasks.running();
         if (running.isEmpty()) {
             return 0;
         }
         ImGuiViewport viewport = ImGui.getMainViewport();
-        float width = Math.min(px(520), viewport.getWorkSizeX() - px(252) - px(72));
-        float centerX = viewport.getWorkPosX() + px(252) + (viewport.getWorkSizeX() - px(252)) * 0.5f;
-        float bottom = viewport.getWorkPosY() + viewport.getWorkSizeY() - px(24);
+        float width = Math.min(px(520), viewport.getWorkSizeX() - px(72));
+        float centerX = viewport.getWorkPosX() + viewport.getWorkSizeX() * 0.5f;
+        float bottom = viewport.getWorkPosY() + viewport.getWorkSizeY() - statusBarHeight() - px(14);
         float[] bg = Theme.rgba(Theme.SURFACE_HI, 1f);
         float[] border = Theme.rgba(Theme.BORDER, 1f);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(18), px(14));
-        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, px(18));
-        ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, px(1));
+        boolean pixel = Pixel.ready();
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, pixel ? 0f : px(1));
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(10), px(6));
-        ImGui.pushStyleColor(ImGuiCol.WindowBg, bg[0], bg[1], bg[2], 0.97f);
+        ImGui.pushStyleColor(ImGuiCol.WindowBg, bg[0], bg[1], bg[2], pixel ? 0f : 0.97f);
         ImGui.pushStyleColor(ImGuiCol.Border, border[0], border[1], border[2], 1f);
         ImGui.setNextWindowPos(centerX, bottom, 0, 0.5f, 1f);
         ImGui.setNextWindowSize(width, 0);
@@ -453,6 +494,9 @@ public final class LauncherUi {
         int flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing
             | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.AlwaysAutoResize;
         if (ImGui.begin("##tasks", flags)) {
+            if (pixel) {
+                Pixel.windowPanel();
+            }
             int index = 0;
             for (Progress progress : running) {
                 ImGui.pushID(index++);
@@ -487,6 +531,7 @@ public final class LauncherUi {
     void navigate(final Page target) {
         if (this.page != target) {
             this.page = target;
+            this.resetScroll = true;
             Motion.set("page#alpha", 0f);
         }
     }

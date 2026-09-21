@@ -22,7 +22,7 @@ import org.teamzetaverse.launcher.release.Release;
 
 final class InstancesPage {
     private static final int[][] TILE_COLORS = {
-        {0xFF6414, 0xF7E36A}, {0xE14E05, 0x8A1F12}, {0xFFB547, 0xFF6414}, {0x8A1F12, 0x2A0A0A}, {0xF7E36A, 0xFF8440}, {0xC23A0B, 0x4A0F0C}
+        {0xB423EC, 0xE3A2FD}, {0x7C2ABA, 0x561A83}, {0xC95BF2, 0xB423EC}, {0x561A83, 0x2A0D3D}, {0xE3A2FD, 0xC95BF2}, {0x9258AA, 0x3B0F5A}
     };
 
     private final LauncherUi ui;
@@ -48,10 +48,10 @@ final class InstancesPage {
     static void drawTile(final ImDrawList dl, final Instance instance, final float x, final float y, final float size) {
         int[] colors = TILE_COLORS[Math.floorMod(instance.id.hashCode(), TILE_COLORS.length)];
         float r = size * 0.28f;
-        dl.addRectFilled(x, y, x + size, y + size, u32(colors[1]), r);
+        Pixel.rect(dl, x, y, x + size, y + size, u32(colors[1]));
         dl.addRectFilledMultiColor(x + r * 0.3f, y + r * 0.3f, x + size - r * 0.3f, y + size - r * 0.3f, u32(colors[0]), u32(colors[0], 0.6f),
             u32(colors[1], 0.2f), u32(colors[0], 0.85f));
-        dl.addRect(x, y, x + size, y + size, u32(colors[1]), r, 0, Math.max(1f, r * 0.45f));
+        Pixel.frame(dl, x, y, x + size, y + size, u32(colors[1]), Math.max(1f, r * 0.45f));
         String initial = instance.name.isBlank() ? "?" : instance.name.substring(0, 1).toUpperCase();
         Fonts.Face face = size >= px(52) ? Fonts.title : Fonts.heading;
         float tw = Widgets.textWidth(face, initial);
@@ -115,7 +115,7 @@ final class InstancesPage {
             float icon = px(56);
             float x = ImGui.getCursorScreenPosX() + (inner - icon) * 0.5f;
             float y = ImGui.getCursorScreenPosY();
-            dl.addCircleFilled(x + icon * 0.5f, y + icon * 0.5f, icon * 0.8f, u32(Theme.EMBER, 0.10f));
+            Pixel.dot(dl, x + icon * 0.5f, y + icon * 0.5f, icon * 0.8f, u32(Theme.EMBER, 0.10f));
             Icons.draw(dl, Icons.Icon.INSTANCES, x, y, icon, u32(Theme.EMBER));
             ImGui.dummy(inner, icon + px(16));
             this.centered(Fonts.heading, Theme.TEXT, "No worlds yet");
@@ -150,8 +150,8 @@ final class InstancesPage {
         float hv = Motion.hover(id + "#hover", hovered);
         float sv = Motion.to(id + "#selected", selected ? 1f : 0f, 14f);
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.mix(Theme.mix(Theme.SURFACE, Theme.SURFACE_HI, hv), Theme.SURFACE_HI, sv)), px(16));
-        dl.addRect(x, y, x + w, y + h, u32(Theme.mix(Theme.BORDER_SOFT, Theme.EMBER, sv * 0.8f)), px(16), 0, px(1));
+        Pixel.rect(dl, x, y, x + w, y + h, u32(Theme.mix(Theme.mix(Theme.SURFACE, Theme.SURFACE_HI, hv), Theme.SURFACE_HI, sv)));
+        Pixel.frame(dl, x, y, x + w, y + h, u32(Theme.mix(Theme.BORDER_SOFT, Theme.EMBER, sv * 0.8f)), px(1));
         float tile = px(46);
         drawTile(dl, instance, x + px(14), y + (h - tile) * 0.5f, tile);
         float tx = x + px(14) + tile + px(13);
@@ -162,10 +162,10 @@ final class InstancesPage {
         Widgets.drawText(dl, Fonts.small, tx, y + px(15) + Fonts.label.size() + px(4), u32(playing ? Theme.OK : Theme.MUTED), Widgets.ellipsize(Fonts.small, sub, tw));
         if (playing) {
             float pulse = 0.5f + 0.5f * (float)Math.sin(ImGui.getTime() * 3.0);
-            dl.addCircleFilled(x + w - px(20), y + px(22), px(7), u32(Theme.OK, 0.18f * pulse));
-            dl.addCircleFilled(x + w - px(20), y + px(22), px(3.5f), u32(Theme.OK));
+            Pixel.dot(dl, x + w - px(20), y + px(22), px(7), u32(Theme.OK, 0.18f * pulse));
+            Pixel.dot(dl, x + w - px(20), y + px(22), px(3.5f), u32(Theme.OK));
         } else if (this.ui.isOutdated(instance)) {
-            dl.addCircleFilled(x + w - px(20), y + px(22), px(3.5f), u32(Theme.SUN));
+            Pixel.dot(dl, x + w - px(20), y + px(22), px(3.5f), u32(Theme.SUN));
         }
         return clicked;
     }
@@ -285,7 +285,7 @@ final class InstancesPage {
             int color = u32(Theme.mix(hovered ? Theme.TEXT : Theme.MUTED, Theme.TEXT, av));
             Widgets.drawText(dl, Fonts.label, cursor + px(14), y0 + (h - Fonts.label.size()) * 0.5f - px(2), color, labels[i]);
             float line = (w - px(20)) * av;
-            dl.addRectFilled(cursor + (w - line) * 0.5f, y0 + h - px(2), cursor + (w + line) * 0.5f, y0 + h + px(1), u32(Theme.EMBER, av), px(2));
+            Pixel.rect(dl, cursor + (w - line) * 0.5f, y0 + h - px(2), cursor + (w + line) * 0.5f, y0 + h + px(1), u32(Theme.EMBER, av));
             cursor += w + px(4);
         }
         ImGui.setCursorScreenPos(x0, y0);
@@ -370,7 +370,7 @@ final class InstancesPage {
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.SURFACE_HI), px(14));
+        Pixel.card(dl, x, y, x + width, y + h, 0f, u32(Theme.SURFACE_HI));
         float iconSize = px(16);
         Icons.draw(dl, icon, x + px(16), y + px(16), iconSize, u32(Theme.EMBER));
         Widgets.drawText(dl, Fonts.small, x + px(40), y + px(15), u32(Theme.MUTED), label);
@@ -409,10 +409,10 @@ final class InstancesPage {
         }
         ImGui.dummy(0, px(4));
 
-        float[] bg = Theme.rgba(0x0B0809, 1f);
+        float[] bg = Theme.rgba(0x0E0418, 1f);
         ImGui.pushStyleColor(ImGuiCol.ChildBg, bg[0], bg[1], bg[2], 1f);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(16), px(14));
-        ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, px(14));
+        ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, 0f);
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(8), px(2));
         boolean open = ImGui.beginChild("log", 0, Math.max(px(260), ImGui.getContentRegionAvailY()), ImGuiChildFlags.AlwaysUseWindowPadding,
             ImGuiWindowFlags.HorizontalScrollbar);
@@ -427,7 +427,7 @@ final class InstancesPage {
                     int color = line.contains("ERROR") || line.contains("Exception") || line.startsWith("\tat ") ? Theme.ERROR
                         : line.contains("WARN") ? Theme.WARN
                         : line.startsWith("[launcher]") ? Theme.SUN
-                        : 0xD9CCC5;
+                        : 0xE7E4E7;
                     Theme.pushText(color);
                     ImGui.textUnformatted(line);
                     ImGui.popStyleColor();

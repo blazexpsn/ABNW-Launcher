@@ -78,7 +78,7 @@ final class Showcase {
             }
         }
 
-        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.MAROON), rounding);
+        Pixel.rect(dl, x, y, x + w, y + h, u32(Theme.MAROON));
         ImageCache.Texture fallback = this.images.get(FALLBACK, 0, true);
         ImageCache.Texture current = this.slides.isEmpty() ? null : this.images.get(this.slides.get(this.index).source(), 2048);
         float fade = this.previous < 0 ? 1f : (float)Math.min(1.0, (now - this.changedAt) / FADE);
@@ -111,7 +111,7 @@ final class Showcase {
             float dy = y + px(20);
             for (int i = 0; i < this.slides.size(); i++) {
                 float width = Motion.to(id + "#dot" + i, i == this.index ? active : dot, 14f);
-                dl.addRectFilled(dx, dy, dx + width, dy + dot, u32(i == this.index ? Theme.SUN : 0xFFFFFF, i == this.index ? 0.95f : 0.45f), dot * 0.5f);
+                Pixel.rect(dl, dx, dy, dx + width, dy + dot, u32(i == this.index ? Theme.SUN : 0xFFFFFF, i == this.index ? 0.95f : 0.45f));
                 dx += width + gap;
             }
         }
@@ -121,7 +121,7 @@ final class Showcase {
         boolean hovered = ImGui.isMouseHoveringRect(x, y, x + size, y + size);
         ImDrawList dl = ImGui.getWindowDrawList();
         float hv = Motion.hover(id, hovered);
-        dl.addCircleFilled(x + size * 0.5f, y + size * 0.5f, size * 0.5f, u32(0x0A0608, (0.45f + 0.25f * hv) * alpha));
+        Pixel.dot(dl, x + size * 0.5f, y + size * 0.5f, size * 0.5f, u32(0x0E0418, (0.45f + 0.25f * hv) * alpha));
         Icons.draw(dl, icon, x + size * 0.22f, y + size * 0.22f, size * 0.56f, u32(0xFFFFFF, alpha));
         if (hovered) {
             ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
@@ -150,6 +150,6 @@ final class Showcase {
             v0 = Math.max(0f, Math.min(1f - span, focusY - span * 0.5f));
             v1 = v0 + span;
         }
-        dl.addImageRounded(texture.id(), x, y, x + w, y + h, u0, v0, u1, v1, u32(0xFFFFFF, alpha), rounding, ImDrawFlags.RoundCornersAll);
+        dl.addImage(texture.id(), x, y, x + w, y + h, u0, v0, u1, v1, u32(0xFFFFFF, alpha));
     }
 }

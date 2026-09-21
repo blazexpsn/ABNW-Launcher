@@ -188,19 +188,19 @@ final class CosmeticsPage {
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.SURFACE), px(20));
+        Pixel.card(dl, x, y, x + width, y + h, 0f, u32(Theme.SURFACE));
         if (showIcon) {
             float gx = x + width - pad - art * 0.5f;
             float gy = y + h * 0.5f;
             float radius = Math.min(h * 0.42f, art * 0.5f);
             for (int i = 4; i >= 1; i--) {
-                dl.addCircleFilled(gx, gy, radius * (0.45f + 0.15f * i), u32(Theme.EMBER, 0.035f));
+                Pixel.dot(dl, gx, gy, radius * (0.45f + 0.15f * i), u32(Theme.EMBER, 0.035f));
             }
-            dl.addCircle(gx, gy, radius * 0.62f, u32(Theme.EMBER, 0.35f), 0, px(1.5f));
+            Pixel.frame(dl, gx - radius * 0.62f, gy - radius * 0.62f, gx + radius * 0.62f, gy + radius * 0.62f, u32(Theme.EMBER, 0.35f), px(1.5f));
             float size = radius * 0.72f;
             Icons.draw(dl, icon, gx - size * 0.5f, gy - size * 0.5f, size, u32(Theme.EMBER));
         }
-        dl.addRect(x, y, x + width, y + h, u32(Theme.EMBER_LO, 0.45f), px(20), 0, px(1));
+        Pixel.frame(dl, x, y, x + width, y + h, u32(Theme.EMBER_LO, 0.45f), px(1));
 
         float cx = x + pad;
         float cy = y + pad;

@@ -158,13 +158,13 @@ final class Announcements {
             float h = Math.max(iconBox, Fonts.label.size() + (messageHeight > 0 ? px(4) + messageHeight : 0)) + pad * 1.4f;
             int accent = entry.color();
             ImDrawList dl = ImGui.getWindowDrawList();
-            dl.addRectFilled(x, y, x + width, y + h, u32(Theme.SURFACE), px(16));
+            Pixel.card(dl, x, y, x + width, y + h, 0f, u32(Theme.SURFACE));
             dl.addRectFilledMultiColor(x + px(16), y, x + width * 0.55f, y + h, u32(accent, 0.10f), u32(accent, 0f), u32(accent, 0f), u32(accent, 0.10f));
-            dl.addRect(x, y, x + width, y + h, u32(accent, 0.35f), px(16), 0, px(1));
-            dl.addRectFilled(x, y + px(14), x + px(3), y + h - px(14), u32(accent), px(2));
+            Pixel.frame(dl, x, y, x + width, y + h, u32(accent, 0.35f), px(1));
+            Pixel.rect(dl, x, y + px(14), x + px(3), y + h - px(14), u32(accent));
             float ix = x + pad;
             float iy = y + (h - iconBox) * 0.5f;
-            dl.addRectFilled(ix, iy, ix + iconBox, iy + iconBox, u32(accent, 0.16f), px(11));
+            Pixel.rect(dl, ix, iy, ix + iconBox, iy + iconBox, u32(accent, 0.16f));
             Icons.draw(dl, entry.icon(), ix + px(9), iy + px(9), iconBox - px(18), u32(accent));
             float tx = ix + iconBox + px(14);
             float contentHeight = Fonts.label.size() + (messageHeight > 0 ? px(4) + messageHeight : 0);
@@ -218,21 +218,25 @@ final class Announcements {
             float[] bg = Theme.rgba(Theme.SURFACE_HI, 1f);
             float[] border = Theme.rgba(entry.color(), 0.45f);
             ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(16), px(14));
-            ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, px(16));
-            ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, px(1));
+            boolean pixel = Pixel.ready();
+            ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
+            ImGui.pushStyleVar(ImGuiStyleVar.WindowBorderSize, pixel ? 0f : px(1));
             ImGui.pushStyleVar(ImGuiStyleVar.Alpha, Math.max(0.01f, enter));
-            ImGui.pushStyleColor(ImGuiCol.WindowBg, bg[0], bg[1], bg[2], 0.98f);
+            ImGui.pushStyleColor(ImGuiCol.WindowBg, bg[0], bg[1], bg[2], pixel ? 0f : 0.98f);
             ImGui.pushStyleColor(ImGuiCol.Border, border[0], border[1], border[2], border[3]);
             ImGui.setNextWindowPos(right + slide, bottom, 0, 1f, 1f);
             ImGui.setNextWindowSize(width, 0);
             int flags = ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoFocusOnAppearing
                 | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.AlwaysAutoResize;
             if (ImGui.begin("##toast-" + entry.id, flags)) {
+                if (pixel) {
+                    Pixel.windowPanel();
+                }
                 float x = ImGui.getCursorScreenPosX();
                 float y = ImGui.getCursorScreenPosY();
                 float iconBox = px(34);
                 ImDrawList dl = ImGui.getWindowDrawList();
-                dl.addRectFilled(x, y, x + iconBox, y + iconBox, u32(entry.color(), 0.16f), px(10));
+                Pixel.rect(dl, x, y, x + iconBox, y + iconBox, u32(entry.color(), 0.16f));
                 Icons.draw(dl, entry.icon(), x + px(8), y + px(8), iconBox - px(16), u32(entry.color()));
                 ImGui.setCursorScreenPos(x + iconBox + px(12), y - px(1));
                 ImGui.beginGroup();

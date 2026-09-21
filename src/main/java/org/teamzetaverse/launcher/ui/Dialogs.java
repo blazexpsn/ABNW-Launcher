@@ -113,10 +113,11 @@ final class Dialogs {
         ImGui.setNextWindowSize(px(width), 0, ImGuiCond.Always);
         float[] bg = Theme.rgba(Theme.SURFACE, 1f);
         float[] border = Theme.rgba(Theme.BORDER, 1f);
-        ImGui.pushStyleColor(ImGuiCol.PopupBg, bg[0], bg[1], bg[2], 1f);
-        ImGui.pushStyleColor(ImGuiCol.Border, border[0], border[1], border[2], 1f);
+        boolean pixel = Pixel.ready();
+        ImGui.pushStyleColor(ImGuiCol.PopupBg, bg[0], bg[1], bg[2], pixel ? 0f : 1f);
+        ImGui.pushStyleColor(ImGuiCol.Border, border[0], border[1], border[2], pixel ? 0f : 1f);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(28), px(26));
-        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, px(20));
+        ImGui.pushStyleVar(ImGuiStyleVar.WindowRounding, 0f);
         ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(12), px(10));
         boolean open = ImGui.beginPopupModal(name, null, ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoMove
             | ImGuiWindowFlags.AlwaysAutoResize);
@@ -124,6 +125,9 @@ final class Dialogs {
             ImGui.popStyleVar(3);
             ImGui.popStyleColor(2);
             return false;
+        }
+        if (pixel) {
+            Pixel.windowPanel();
         }
         Widgets.text(Fonts.title, Theme.TEXT, title);
         ImGui.sameLine();
@@ -244,13 +248,13 @@ final class Dialogs {
         float hv = Motion.hover(id + "#hover", hovered);
         float sv = Motion.to(id + "#sel", selected ? 1f : 0f, 16f);
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.mix(Theme.mix(Theme.SURFACE_HI, Theme.SURFACE_HOVER, hv), Theme.SURFACE_HOVER, sv)), px(14));
-        dl.addRect(x, y, x + w, y + h, u32(Theme.mix(Theme.BORDER_SOFT, Theme.EMBER, sv)), px(14), 0, px(sv > 0.5f ? 1.5f : 1f));
+        Pixel.rect(dl, x, y, x + w, y + h, u32(Theme.mix(Theme.mix(Theme.SURFACE_HI, Theme.SURFACE_HOVER, hv), Theme.SURFACE_HOVER, sv)));
+        Pixel.frame(dl, x, y, x + w, y + h, u32(Theme.mix(Theme.BORDER_SOFT, Theme.EMBER, sv)), px(sv > 0.5f ? 1.5f : 1f));
         float radio = px(18);
         float rx = x + px(16);
         float ry = y + (h - radio) * 0.5f;
-        dl.addCircle(rx + radio * 0.5f, ry + radio * 0.5f, radio * 0.5f, u32(Theme.mix(Theme.FAINT, Theme.EMBER, sv)), 0, px(1.6f));
-        dl.addCircleFilled(rx + radio * 0.5f, ry + radio * 0.5f, radio * 0.26f * sv, u32(Theme.EMBER));
+        Pixel.frame(dl, rx + radio * 0.5f - radio * 0.5f, ry + radio * 0.5f - radio * 0.5f, rx + radio * 0.5f + radio * 0.5f, ry + radio * 0.5f + radio * 0.5f, u32(Theme.mix(Theme.FAINT, Theme.EMBER, sv)), px(1.6f));
+        Pixel.dot(dl, rx + radio * 0.5f, ry + radio * 0.5f, radio * 0.26f * sv, u32(Theme.EMBER));
         float tx = rx + radio + px(14);
         Widgets.drawText(dl, Fonts.label, tx, y + px(12), u32(Theme.TEXT), release.displayName());
         String date = release.releaseTime == null || release.releaseTime.length() < 10 ? "" : Format.date(release.releaseTime);
@@ -344,8 +348,8 @@ final class Dialogs {
         float h = px(92);
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
-        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.BG), px(16));
-        dl.addRect(x, y, x + width, y + h, u32(Theme.EMBER, 0.35f), px(16), 0, px(1));
+        Pixel.rect(dl, x, y, x + width, y + h, u32(Theme.BG));
+        Pixel.frame(dl, x, y, x + width, y + h, u32(Theme.EMBER, 0.35f), px(1));
         String spaced = String.join(" ", code.userCode().split(""));
         float tw = Widgets.textWidth(Fonts.hero, spaced);
         Widgets.drawText(dl, Fonts.hero, x + (width - tw) * 0.5f, y + (h - Fonts.hero.size()) * 0.5f - px(2), u32(Theme.SUN), spaced);

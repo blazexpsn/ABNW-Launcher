@@ -85,8 +85,11 @@ final class NewsPage {
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.SURFACE), px(20));
-        dl.addRect(x, y, x + width, y + h, u32(latest ? Theme.EMBER_LO : Theme.BORDER_SOFT), px(20), 0, px(1));
+        if (latest) {
+            Pixel.highlightCard(dl, x, y, x + width, y + h, u32(Theme.SURFACE));
+        } else {
+            Pixel.card(dl, x, y, x + width, y + h, 0f, u32(Theme.SURFACE));
+        }
         float cx = x + pad;
         float cy = y + pad;
         String version = "v" + (entry.version.startsWith("v") ? entry.version.substring(1) : entry.version);
@@ -110,7 +113,7 @@ final class NewsPage {
             cy += px(12);
             for (int i = 0; i < changeHeights.length; i++) {
                 float dot = px(5);
-                dl.addCircleFilled(cx + px(6), cy + Fonts.body.size() * 0.5f + px(1), dot * 0.5f, u32(Theme.EMBER));
+                Pixel.dot(dl, cx + px(6), cy + Fonts.body.size() * 0.5f + px(1), dot * 0.5f, u32(Theme.EMBER));
                 Widgets.drawTextWrapped(dl, Fonts.body, cx + bulletIndent, cy, u32(Theme.MUTED), entry.changes.get(i), textWidth - bulletIndent);
                 cy += changeHeights[i] + px(6);
             }
@@ -137,13 +140,12 @@ final class NewsPage {
         boolean hovered = ImGui.isMouseHoveringRect(x, y, x + width, y + h) && ImGui.isWindowHovered();
         float hv = Motion.hover(id + "#hover", hovered);
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.SURFACE), px(20));
-        dl.addRect(x, y, x + width, y + h, u32(Theme.mix(Theme.BORDER_SOFT, Theme.EMBER_LO, hv * 0.5f)), px(20), 0, px(1));
+        Pixel.card(dl, x, y, x + width, y + h, hv, u32(Theme.SURFACE));
         if (hasImage) {
             if (image != null) {
                 drawTopCover(dl, image, x, y, width, imageHeight);
             } else {
-                dl.addRectFilled(x, y, x + width, y + imageHeight, u32(Theme.SURFACE_HI), px(20), ImDrawFlags.RoundCornersTop);
+                Pixel.rect(dl, x, y, x + width, y + imageHeight, u32(Theme.SURFACE_HI));
             }
         }
         float cy = y + imageHeight + pad;
@@ -194,6 +196,6 @@ final class NewsPage {
             v0 = (1f - span) * 0.5f;
             v1 = v0 + span;
         }
-        dl.addImageRounded(texture.id(), x, y, x + w, y + h, u0, v0, u1, v1, u32(0xFFFFFF), px(20), ImDrawFlags.RoundCornersTop);
+        dl.addImage(texture.id(), x, y, x + w, y + h, u0, v0, u1, v1, u32(0xFFFFFF));
     }
 }

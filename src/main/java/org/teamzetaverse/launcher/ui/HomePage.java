@@ -30,54 +30,37 @@ final class HomePage {
         float width = ImGui.getContentRegionAvailX();
         this.ui.announcements.drawBanners(width);
         this.drawHero(width);
-        ImGui.dummy(0, px(18));
+        ImGui.dummy(0, px(26));
+
+        Widgets.pixelHeading("Latest news");
+        ImGui.sameLine();
+        Widgets.alignRight(Widgets.textWidth(Fonts.labelSmall, "All news") + px(19));
+        if (Widgets.link("home-all-news", "All news", Icons.Icon.CHEVRON_RIGHT)) {
+            this.ui.navigate(LauncherUi.Page.NEWS);
+        }
+        ImGui.dummy(0, px(4));
+        this.drawNews(width);
+        ImGui.dummy(0, px(22));
 
         float gap = px(20);
-        float right = Math.max(px(300), width * 0.34f);
-        float left = width - right - gap;
+        float half = (width - gap) * 0.5f;
         ImGui.beginGroup();
-        this.drawNews(left);
+        this.drawStatus(half);
         ImGui.endGroup();
         ImGui.sameLine(0, gap);
         ImGui.beginGroup();
-        this.drawStatus(right);
-        ImGui.dummy(0, px(6));
-        this.drawTeaser(right);
+        this.drawTeaser(half);
         ImGui.endGroup();
     }
-
     private void drawHero(final float width) {
-        float height = Math.max(px(300), Math.min(px(470), width * 0.42f));
+        float u = Pixel.unit();
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
-        float rounding = px(22);
+        float horizon = this.ui.world.horizonY();
+        float height = Math.max(px(260), horizon - y);
         ImDrawList dl = ImGui.getWindowDrawList();
-        this.ui.showcase.draw("hero", x, y, width, height, rounding);
-
-        float fadeTop = y + height * 0.30f;
-        float fadeBottom = y + height - rounding;
-        dl.addRectFilledMultiColor(x, fadeTop, x + width, fadeBottom, u32(Theme.BG, 0f), u32(Theme.BG, 0f), u32(Theme.BG, 0.9f), u32(Theme.BG, 0.9f));
-        dl.addRectFilled(x, fadeBottom - px(0.5f), x + width, y + height, u32(Theme.BG, 0.9f), rounding, ImDrawFlags.RoundCornersBottom);
-        dl.addRectFilledMultiColor(x + rounding, y + height * 0.45f, x + width * 0.6f, fadeBottom, u32(Theme.BG, 0.35f), u32(Theme.BG, 0f),
-            u32(Theme.BG, 0f), u32(Theme.BG, 0.35f));
-        dl.addRect(x, y, x + width, y + height, u32(0xFFFFFF, 0.06f), rounding, 0, px(1));
-
-        Showcase.Slide slide = this.ui.showcase.current();
-        if (slide != null && slide.caption() != null && !slide.caption().isBlank()) {
-            String caption = slide.credit() == null || slide.credit().isBlank() ? slide.caption() : slide.caption() + "  ·  " + slide.credit();
-            Widgets.drawPill(dl, x + px(20), y + px(18), caption, Theme.TEXT, 0x0A0608, 0.6f, Icons.Icon.IMAGE);
-        }
 
         Optional<Instance> selected = this.ui.selectedInstance();
-        float pad = px(34);
-        float buttonHeight = px(58);
-        float playWidth = px(196);
-        float pickerWidth = selected.isPresent() && this.ui.instances.all().size() > 0 ? px(230) : 0;
-        float buttonsY = y + height - pad - buttonHeight;
-        float playX = x + width - pad - playWidth;
-
-        float textRight = (pickerWidth > 0 ? playX - px(12) - pickerWidth : playX) - px(24);
-        float textWidth = textRight - (x + pad);
         String overline = selected.map(i -> i.name).orElse("A Brand New World");
         String headline;
         String status;
@@ -109,30 +92,58 @@ final class HomePage {
                 statusColor = Theme.OK;
             }
         }
-        float headlineSize = Fonts.hero.size();
-        float blockHeight = Fonts.overline.size() + px(6) + headlineSize + px(6) + Fonts.body.size();
-        float ty = y + height - pad - blockHeight + px(2);
-        float tx = x + pad;
-        Widgets.drawOverline(dl, tx, ty, u32(Theme.SUN), Widgets.ellipsize(Fonts.overline, overline, textWidth / 1.2f));
-        ty += Fonts.overline.size() + px(6);
-        String fitted = Widgets.ellipsize(Fonts.hero, headline, textWidth);
-        dl.addText(Fonts.hero.font(), (int)headlineSize, tx + px(1), ty + px(2), u32(0x000000, 0.35f), fitted);
-        Widgets.drawText(dl, Fonts.hero, tx, ty, u32(Theme.TEXT), fitted);
-        ty += headlineSize + px(6);
-        float dot = px(8);
-        dl.addCircleFilled(tx + dot * 0.5f, ty + Fonts.body.size() * 0.5f, dot, u32(statusColor, 0.2f));
-        dl.addCircleFilled(tx + dot * 0.5f, ty + Fonts.body.size() * 0.5f, dot * 0.5f, u32(statusColor));
-        Widgets.drawText(dl, Fonts.body, tx + dot + px(10), ty - px(1), u32(Theme.MUTED), Widgets.ellipsize(Fonts.body, status, textWidth - dot - px(10)));
 
+        float buttonHeight = u * 29f;
+        float playWidth = px(210);
+        boolean hasPicker = selected.isPresent() && !this.ui.instances.all().isEmpty();
+        float pickerWidth = hasPicker ? px(260) : 0;
+        float buttonsY = horizon - buttonHeight + u;
+        float rowX = x;
+        float playX = rowX + (hasPicker ? pickerWidth + u * 6 : 0);
+
+        float textWidth = Math.min(width * 0.62f, Math.max(px(420), playX + playWidth - x));
+        float headlineScale = PixelText.headline();
+        java.util.List<String> lines = wrap(headline.toUpperCase(), headlineScale, textWidth);
+        float blockHeight = PixelText.height(PixelText.small()) + u * 6 + lines.size() * (PixelText.height(headlineScale) + u * 5) + Fonts.body.size();
+        float ty = buttonsY - u * 10 - blockHeight;
+        PixelText.draw(dl, x, ty, PixelText.fit(overline.toUpperCase(), PixelText.small(), textWidth), PixelText.small(), u32(Theme.SUN));
+        ty += PixelText.height(PixelText.small()) + u * 6;
+        for (String line : lines) {
+            PixelText.draw(dl, x, ty, line, headlineScale, u32(Theme.TEXT));
+            ty += PixelText.height(headlineScale) + u * 5;
+        }
+        float dot = px(8);
+        Pixel.dot(dl, x + dot * 0.5f, ty + Fonts.body.size() * 0.5f, dot, u32(statusColor, 0.25f));
+        Pixel.dot(dl, x + dot * 0.5f, ty + Fonts.body.size() * 0.5f, dot * 0.5f, u32(statusColor));
+        Widgets.drawText(dl, Fonts.body, x + dot + px(10), ty - px(1), u32(Theme.TEXT, 0.85f),
+            Widgets.ellipsize(Fonts.body, status, textWidth - dot - px(10)));
+
+        Showcase.Slide slide = this.ui.showcase.current();
+        if (slide != null) {
+            float frameW = Math.min(width * 0.34f, px(420));
+            float frameH = frameW * 0.56f;
+            float fx = x + width - frameW;
+            float fy = Math.max(y + u * 4, buttonsY - frameH - u * 14);
+            Pixel.nine(dl, Pixel.PANEL, fx - u * 4, fy - u * 4, fx + frameW + u * 4, fy + frameH + u * 7, 4, u32(0xFFFFFF));
+            this.ui.showcase.draw("hero", fx, fy, frameW, frameH, 0f);
+            if (slide.caption() != null && !slide.caption().isBlank()) {
+                String caption = slide.credit() == null || slide.credit().isBlank() ? slide.caption() : slide.caption() + "  ·  " + slide.credit();
+                Widgets.drawPill(dl, fx + u * 4, fy + u * 4, caption, Theme.TEXT, 0x0E0418, 0.7f, Icons.Icon.IMAGE);
+            }
+        }
+
+        boolean excited = false;
         ImGui.setCursorScreenPos(playX, buttonsY);
         if (this.ui.currentAccount().isEmpty()) {
             if (Widgets.primary("hero-signin", "Sign in", Icons.Icon.USER, playWidth, buttonHeight, true)) {
                 this.ui.startSignIn();
             }
+            excited = ImGui.isItemHovered();
         } else if (selected.isEmpty()) {
             if (Widgets.primary("hero-create", "Create", Icons.Icon.PLUS, playWidth, buttonHeight, true)) {
                 this.ui.dialogs.openNewInstance();
             }
+            excited = ImGui.isItemHovered();
         } else {
             Instance instance = selected.get();
             if (this.ui.running.containsKey(instance.id)) {
@@ -144,34 +155,37 @@ final class HomePage {
                 if (Widgets.primary("hero-play", busy ? "Preparing" : "Play", Icons.Icon.PLAY, playWidth, buttonHeight, !busy)) {
                     this.ui.play(instance);
                 }
+                excited = ImGui.isItemHovered() || this.ui.running.containsKey(instance.id);
             }
         }
+        this.ui.world.penguin(dl, playX + playWidth + u * 28, horizon + u * 2, excited);
 
-        if (pickerWidth > 0 && selected.isPresent()) {
-            float px0 = playX - px(12) - pickerWidth;
-            ImGui.setCursorScreenPos(px0, buttonsY);
-            boolean clicked = ImGui.invisibleButton("hero-picker", pickerWidth, buttonHeight);
+        if (hasPicker) {
+            float px0 = rowX;
+            float pickerH = buttonHeight - u * 5;
+            float py0 = buttonsY + u;
+            ImGui.setCursorScreenPos(px0, py0);
+            boolean clicked = ImGui.invisibleButton("hero-picker", pickerWidth, pickerH);
             boolean hovered = ImGui.isItemHovered();
             if (hovered) {
                 ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
             }
             float hv = Motion.hover("hero-picker#hover", hovered || ImGui.isPopupOpen("hero-instances"));
-            dl.addRectFilled(px0, buttonsY, px0 + pickerWidth, buttonsY + buttonHeight, u32(0x0A0608, 0.55f + 0.15f * hv), px(14));
-            dl.addRect(px0, buttonsY, px0 + pickerWidth, buttonsY + buttonHeight, u32(0xFFFFFF, 0.10f + 0.12f * hv), px(14), 0, px(1));
-            float tile = px(34);
-            float tileY = buttonsY + (buttonHeight - tile) * 0.5f;
-            InstancesPage.drawTile(dl, selected.get(), px0 + px(12), tileY, tile);
-            float labelX = px0 + px(12) + tile + px(11);
-            float labelWidth = pickerWidth - (labelX - px0) - px(34);
-            Widgets.drawText(dl, Fonts.tiny, labelX, buttonsY + px(11), u32(Theme.FAINT), "INSTANCE");
-            Widgets.drawText(dl, Fonts.label, labelX, buttonsY + px(11) + Fonts.tiny.size() + px(3), u32(Theme.TEXT),
+            Pixel.card(dl, px0, py0, px0 + pickerWidth, py0 + pickerH, hv, u32(Theme.SURFACE));
+            float tile = pickerH - u * 12;
+            float tileY = py0 + (pickerH - u * 3 - tile) * 0.5f;
+            InstancesPage.drawTile(dl, selected.get(), px0 + u * 6, tileY, tile);
+            float labelX = px0 + u * 6 + tile + u * 6;
+            float labelWidth = pickerWidth - (labelX - px0) - u * 16;
+            PixelText.draw(dl, labelX, tileY + u, "INSTANCE", PixelText.small(), u32(Theme.FAINT));
+            Widgets.drawText(dl, Fonts.label, labelX, tileY + u + PixelText.height(PixelText.small()) + u * 3, u32(Theme.TEXT),
                 Widgets.ellipsize(Fonts.label, selected.get().name, labelWidth));
-            Icons.draw(dl, Icons.Icon.CHEVRON_DOWN, px0 + pickerWidth - px(28), buttonsY + (buttonHeight - px(14)) * 0.5f, px(14), u32(Theme.MUTED));
+            Icons.draw(dl, Icons.Icon.CHEVRON_DOWN, px0 + pickerWidth - u * 13, py0 + (pickerH - u * 3 - px(16)) * 0.5f, px(16), u32(Theme.MUTED));
             if (clicked) {
                 ImGui.openPopup("hero-instances");
             }
-            ImGui.setNextWindowPos(px0, buttonsY - px(8), 0, 0f, 1f);
-            ImGui.setNextWindowSize(pickerWidth + px(12) + playWidth, 0);
+            ImGui.setNextWindowPos(px0, py0 - px(8), 0, 0f, 1f);
+            ImGui.setNextWindowSize(pickerWidth + u * 6 + playWidth, 0);
             ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(8), px(8));
             ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(4), px(4));
             if (ImGui.beginPopup("hero-instances")) {
@@ -196,15 +210,31 @@ final class HomePage {
         ImGui.dummy(width, height);
     }
 
-    private void drawNews(final float width) {
-        Widgets.text(Fonts.heading, Theme.TEXT, "Latest news");
-        ImGui.sameLine();
-        Widgets.alignRight(Widgets.textWidth(Fonts.labelSmall, "All news") + px(19));
-        ImGui.setCursorPosY(ImGui.getCursorPosY() + px(3));
-        if (Widgets.link("home-all-news", "All news", Icons.Icon.CHEVRON_RIGHT)) {
-            this.ui.navigate(LauncherUi.Page.NEWS);
+    private static java.util.List<String> wrap(final String text, final float scale, final float maxWidth) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        for (String word : text.split("\\s+")) {
+            String candidate = line.length() == 0 ? word : line + " " + word;
+            if (PixelText.width(candidate, scale) <= maxWidth || line.length() == 0) {
+                line.setLength(0);
+                line.append(candidate);
+            } else {
+                lines.add(line.toString());
+                line.setLength(0);
+                line.append(word);
+            }
         }
-        ImGui.dummy(0, px(2));
+        if (line.length() > 0) {
+            lines.add(line.toString());
+        }
+        if (lines.size() > 2) {
+            java.util.List<String> kept = new java.util.ArrayList<>(lines.subList(0, 2));
+            kept.set(1, PixelText.fit(kept.get(1) + " " + String.join(" ", lines.subList(2, lines.size())), scale, maxWidth));
+            return kept;
+        }
+        return lines;
+    }
+    private void drawNews(final float width) {
         List<Feed.News> news = this.ui.feed.news;
         if (news.isEmpty()) {
             if (Widgets.beginCard("home-news-empty", width, 0)) {
@@ -213,24 +243,28 @@ final class HomePage {
             Widgets.endCard();
             return;
         }
-        for (int i = 0; i < Math.min(3, news.size()); i++) {
+        int count = Math.min(3, news.size());
+        float gap = px(16);
+        float column = (width - gap * (count - 1)) / count;
+        for (int i = 0; i < count; i++) {
             Feed.News item = news.get(i);
-            if (this.compactNews("home-news-" + i, item, width)) {
+            if (i > 0) {
+                ImGui.sameLine(0, gap);
+            }
+            if (this.compactNews("home-news-" + i, item, column)) {
                 if (!item.url.isEmpty()) {
                     Desktop.browse(item.url);
                 } else {
                     this.ui.navigate(LauncherUi.Page.NEWS);
                 }
             }
-            ImGui.dummy(0, px(2));
         }
     }
-
     private boolean compactNews(final String id, final Feed.News item, final float width) {
         float pad = px(16);
-        float thumbW = px(104);
-        float thumbH = px(76);
-        float h = thumbH + pad * 2;
+        float thumbW = px(68);
+        float thumbH = px(68);
+        float h = thumbH + pad * 2 + Fonts.small.size() * 2 + px(10);
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
         boolean clicked = ImGui.invisibleButton(id, width, h);
@@ -240,16 +274,15 @@ final class HomePage {
         }
         float hv = Motion.hover(id + "#hover", hovered);
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.mix(Theme.SURFACE, Theme.SURFACE_HI, hv)), px(16));
-        dl.addRect(x, y, x + width, y + h, u32(Theme.mix(Theme.BORDER_SOFT, Theme.EMBER_LO, hv * 0.6f)), px(16), 0, px(1));
+        Pixel.card(dl, x, y, x + width, y + h, hv, u32(Theme.mix(Theme.SURFACE, Theme.SURFACE_HI, hv)));
         float tx = x + pad;
         float ty = y + pad;
         ImageCache.Texture image = item.image.isEmpty() ? null : this.ui.images.get(item.image, 512);
         if (image != null) {
-            Showcase.drawCover(dl, image, tx, ty, thumbW, thumbH, px(11), 1f, 0.5f);
+            Showcase.drawCover(dl, image, tx, ty, thumbW, thumbH, 0f, 1f, 0.5f);
         } else {
-            dl.addRectFilledMultiColor(tx, ty, tx + thumbW, ty + thumbH, u32(Theme.EMBER_DEEP), u32(Theme.MAROON), u32(Theme.EMBER_DEEP), u32(0x1A0B08));
-            dl.addRect(tx, ty, tx + thumbW, ty + thumbH, u32(Theme.SURFACE), px(11), 0, px(3));
+            dl.addRectFilledMultiColor(tx, ty, tx + thumbW, ty + thumbH, u32(Theme.EMBER_DEEP), u32(Theme.MAROON), u32(Theme.EMBER_DEEP), u32(0x1A0B26));
+            Pixel.frame(dl, tx, ty, tx + thumbW, ty + thumbH, u32(Theme.SURFACE), px(3));
             float iconSize = px(28);
             Icons.draw(dl, iconFor(item.tag), tx + (thumbW - iconSize) * 0.5f, ty + (thumbH - iconSize) * 0.5f, iconSize, u32(Theme.EMBER, 0.85f));
         }
@@ -257,13 +290,14 @@ final class HomePage {
         float bw = x + width - pad - bx;
         String meta = (item.tag.isEmpty() ? "" : item.tag.toUpperCase()) + (item.tag.isEmpty() || item.date.isEmpty() ? "" : "  ·  ")
             + Format.date(item.date);
-        Widgets.drawText(dl, Fonts.tiny, bx, ty, u32(Theme.EMBER), Widgets.ellipsize(Fonts.tiny, meta, bw));
-        float titleY = ty + Fonts.tiny.size() + px(5);
+        PixelText.draw(dl, bx, ty + px(2), PixelText.fit(meta.toUpperCase(), PixelText.small(), bw), PixelText.small(), u32(Theme.SUN));
+        float titleY = ty + PixelText.height(PixelText.small()) + px(10);
         Widgets.drawText(dl, Fonts.label, bx, titleY, u32(Theme.TEXT), Widgets.ellipsize(Fonts.label, item.title, bw));
-        float summaryY = titleY + Fonts.label.size() + px(5);
-        List<String> lines = Widgets.clampLines(Fonts.small, item.summary, bw, 2);
+        float summaryY = ty + thumbH + px(10);
+        float summaryW = width - pad * 2;
+        List<String> lines = Widgets.clampLines(Fonts.small, item.summary, summaryW, 2);
         for (String line : lines) {
-            Widgets.drawText(dl, Fonts.small, bx, summaryY, u32(Theme.MUTED), line);
+            Widgets.drawText(dl, Fonts.small, tx, summaryY, u32(Theme.MUTED), line);
             summaryY += Fonts.small.size() + px(3);
         }
         return clicked;
@@ -359,8 +393,8 @@ final class HomePage {
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + width, y + h, u32(Theme.BG), px(16));
-        dl.addRect(x, y, x + width, y + h, u32(Theme.BORDER_SOFT), px(16), 0, px(1));
+        Pixel.rect(dl, x, y, x + width, y + h, u32(Theme.BG));
+        Pixel.frame(dl, x, y, x + width, y + h, u32(Theme.BORDER_SOFT), px(1));
         float pulse = 0.55f + 0.2f * (float)Math.sin(now * 1.6);
         Icons.draw(dl, Icons.Icon.SPARK, x + pad, y + pad, px(20), u32(Theme.SUN, pulse));
         float tx = x + pad + px(34);
@@ -371,7 +405,7 @@ final class HomePage {
             float dot = px(4);
             float dx = x + width - pad - (teasers.size() * (dot + px(4)) - px(4));
             for (int i = 0; i < teasers.size(); i++) {
-                dl.addCircleFilled(dx + dot * 0.5f, y + pad + dot * 0.5f, dot * 0.5f, u32(i == index ? Theme.SUN : Theme.FAINT, i == index ? 0.8f : 0.4f));
+                Pixel.dot(dl, dx + dot * 0.5f, y + pad + dot * 0.5f, dot * 0.5f, u32(i == index ? Theme.SUN : Theme.FAINT, i == index ? 0.8f : 0.4f));
                 dx += dot + px(4);
             }
         }

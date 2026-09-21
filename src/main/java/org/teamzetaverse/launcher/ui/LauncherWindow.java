@@ -50,7 +50,7 @@ public final class LauncherWindow {
                 if (ui.isAnimating()) {
                     glfwPollEvents();
                 } else {
-                    glfwWaitEventsTimeout(0.25);
+                    glfwWaitEventsTimeout(ui.idleWait());
                 }
                 ui.beforeFrame();
 

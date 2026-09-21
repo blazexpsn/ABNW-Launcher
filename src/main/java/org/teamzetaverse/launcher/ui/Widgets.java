@@ -42,6 +42,9 @@ final class Widgets {
         if (variant == Variant.PRIMARY) {
             return images.get(PANEL_PRIMARY, 0, true);
         }
+        if (variant == Variant.DANGER) {
+            return images.get(Pixel.BUTTON_DANGER, 0, true);
+        }
         return variant == Variant.SECONDARY ? images.get(PANEL_SECONDARY, 0, true) : null;
     }
 
@@ -182,10 +185,10 @@ final class Widgets {
             if (variant == Variant.PRIMARY && hv > 0.01f && enabled) {
                 for (int i = 3; i >= 1; i--) {
                     float grow = px(2.6f) * i * hv;
-                    dl.addRectFilled(x - grow, y + drop - grow, x + w + grow, y + h + drop + grow, u32(Theme.EMBER, 0.07f * hv / i), r + grow);
+                    Pixel.rect(dl, x - grow, y + drop - grow, x + w + grow, y + h + drop + grow, u32(Theme.EMBER, 0.07f * hv / i));
                 }
             }
-            int seam = variant == Variant.PRIMARY ? PANEL_PRIMARY_SEAM : PANEL_SECONDARY_SEAM;
+            int seam = variant == Variant.SECONDARY ? PANEL_SECONDARY_SEAM : PANEL_PRIMARY_SEAM;
             drawPanel(dl, panel, seam, x, y + drop, x + w, y + h + drop, u32(Theme.mix(0xCBBAD6, 0xFFFFFF, hv), alpha));
             fg = u32(0xFFFFFF, alpha);
             centre = y + drop + h * PANEL_FACE * 0.5f;
@@ -198,25 +201,27 @@ final class Widgets {
                     if (hv > 0.01f && enabled) {
                         for (int i = 3; i >= 1; i--) {
                             float grow = px(2.6f) * i * hv;
-                            dl.addRectFilled(x0 - grow, y0 - grow, x1 + grow, y1 + grow, u32(Theme.EMBER, 0.07f * hv / i), r + grow);
+                            Pixel.rect(dl, x0 - grow, y0 - grow, x1 + grow, y1 + grow, u32(Theme.EMBER, 0.07f * hv / i));
                         }
                     }
                     int base = active ? Theme.EMBER_LO : Theme.mix(Theme.EMBER, Theme.EMBER_HI, hv);
-                    dl.addRectFilled(x0, y0, x1, y1, u32(base, alpha), r);
-                    dl.addRectFilled(x0, y0, x1, y0 + (y1 - y0) * 0.5f, u32(0xFFFFFF, 0.07f * alpha), r, ImDrawFlags.RoundCornersTop);
+                    Pixel.rect(dl, x0, y0, x1, y1, u32(base, alpha));
+                    Pixel.rect(dl, x0, y0, x1, y0 + (y1 - y0) * 0.5f, u32(0xFFFFFF, 0.07f * alpha));
                     fg = u32(Theme.ON_EMBER, alpha);
                 }
                 case SECONDARY -> {
-                    dl.addRectFilled(x0, y0, x1, y1, u32(Theme.mix(Theme.SURFACE_HI, Theme.SURFACE_HOVER, hv), alpha), r);
-                    dl.addRect(x0, y0, x1, y1, u32(Theme.mix(Theme.BORDER, Theme.EMBER_LO, hv * 0.35f), alpha), r, ImDrawFlags.None, px(1));
+                    Pixel.rect(dl, x0, y0, x1, y1, u32(Theme.mix(Theme.SURFACE_HI, Theme.SURFACE_HOVER, hv), alpha));
+                    Pixel.frame(dl, x0, y0, x1, y1, u32(Theme.mix(Theme.BORDER, Theme.EMBER_LO, hv * 0.35f), alpha), px(1));
                     fg = u32(Theme.TEXT, alpha);
                 }
                 case DANGER -> {
-                    dl.addRectFilled(x0, y0, x1, y1, u32(Theme.ERROR, (0.12f + 0.12f * hv) * alpha), r);
+                    Pixel.rect(dl, x0, y0, x1, y1, u32(Theme.ERROR, (0.12f + 0.12f * hv) * alpha));
                     fg = u32(Theme.ERROR, alpha);
                 }
                 default -> {
-                    dl.addRectFilled(x0, y0, x1, y1, u32(0xFFFFFF, 0.06f * hv * alpha), r);
+                    if (hv > 0.01f && !Pixel.nine(dl, Pixel.PANEL_HOVER, x0, y0, x1, y1, 4, u32(0xFFFFFF, hv * alpha))) {
+                        Pixel.rect(dl, x0, y0, x1, y1, u32(0xFFFFFF, 0.06f * hv * alpha));
+                    }
                     fg = u32(Theme.mix(Theme.MUTED, Theme.TEXT, hv), alpha);
                 }
             }
@@ -224,9 +229,6 @@ final class Widgets {
         int carvedShadow = u32(0x2B0B3D, 0.5f * alpha);
         float cx = x + (w - contentW) * 0.5f;
         if (icon != null) {
-            if (carved) {
-                Icons.draw(dl, icon, cx + px(1.5f), centre - iconSize * 0.5f + px(1.5f), iconSize, carvedShadow);
-            }
             Icons.draw(dl, icon, cx, centre - iconSize * 0.5f, iconSize, fg);
             cx += iconSize + gap;
         }
@@ -313,7 +315,9 @@ final class Widgets {
                          final Icons.Icon icon) {
         float h = px(22);
         float w = pillWidth(text, icon);
-        dl.addRectFilled(x, y, x + w, y + h, u32(bg, bgAlpha), h * 0.5f);
+        if (!Pixel.three(dl, Pixel.PILL, x, y, x + w, y + h, 3, u32(bg, bgAlpha))) {
+            Pixel.rect(dl, x, y, x + w, y + h, u32(bg, bgAlpha));
+        }
         float cx = x + px(9);
         if (icon != null) {
             Icons.draw(dl, icon, cx, y + (h - px(12)) * 0.5f, px(12), u32(fg));
@@ -327,8 +331,8 @@ final class Widgets {
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY() + (ImGui.getTextLineHeight() - size) * 0.5f;
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addCircleFilled(x + size * 0.5f, y + size * 0.5f, size * 0.95f, u32(rgb, 0.22f));
-        dl.addCircleFilled(x + size * 0.5f, y + size * 0.5f, size * 0.5f, u32(rgb));
+        Pixel.dot(dl, x + size * 0.5f, y + size * 0.5f, size * 0.95f, u32(rgb, 0.22f));
+        Pixel.dot(dl, x + size * 0.5f, y + size * 0.5f, size * 0.5f, u32(rgb));
         ImGui.dummy(size, ImGui.getTextLineHeight());
     }
 
@@ -345,10 +349,20 @@ final class Widgets {
         float t = Motion.to(id + "#on", value ? 1f : 0f, 18f);
         float hv = Motion.hover(id + "#hover", hovered);
         ImDrawList dl = ImGui.getWindowDrawList();
-        int track = Theme.mix(Theme.mix(Theme.SURFACE_HOVER, 0x3E2E36, hv), Theme.EMBER, t);
-        dl.addRectFilled(x, y, x + w, y + h, u32(track), h * 0.5f);
-        float knob = h * 0.5f - px(3);
-        dl.addCircleFilled(x + h * 0.5f + t * (w - h), y + h * 0.5f, knob, u32(Theme.mix(Theme.MUTED, 0xFFFFFF, t)));
+        int glow = u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv));
+        boolean drawn = Pixel.three(dl, Pixel.TOGGLE_OFF, x, y, x + w, y + h, 4, glow);
+        if (drawn && t > 0.01f) {
+            Pixel.three(dl, Pixel.TOGGLE_ON, x, y, x + w, y + h, 4, u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv), t));
+        }
+        float inset = Math.round(h / 9f);
+        float side = h - inset * 2f;
+        float kx = x + inset + t * (w - side - inset * 2f);
+        if (!drawn || !Pixel.sprite(dl, Pixel.TOGGLE_KNOB, kx, y + inset, kx + side, y + inset + side, 0f, 0f, 1f, 1f, u32(0xFFFFFF))) {
+            int track = Theme.mix(Theme.mix(Theme.SURFACE_HOVER, 0x5A2690, hv), Theme.EMBER, t);
+            Pixel.rect(dl, x, y, x + w, y + h, u32(track));
+            float knob = h * 0.5f - px(3);
+            Pixel.dot(dl, x + h * 0.5f + t * (w - h), y + h * 0.5f, knob, u32(Theme.mix(Theme.MUTED, 0xFFFFFF, t)));
+        }
         return clicked;
     }
 
@@ -358,20 +372,26 @@ final class Widgets {
         float y = ImGui.getCursorScreenPosY();
         ImDrawList dl = ImGui.getWindowDrawList();
         float r = height * 0.5f;
-        dl.addRectFilled(x, y, x + w, y + height, u32(0xFFFFFF, 0.07f), r);
+        if (!Pixel.three(dl, Pixel.PROGRESS_TRACK, x, y, x + w, y + height, 2, u32(0xFFFFFF))) {
+            Pixel.rect(dl, x, y, x + w, y + height, u32(0xFFFFFF, 0.07f));
+        }
         if (fraction < 0) {
             float t = (float)((ImGui.getTime() % 1.3) / 1.3);
             float segment = w * 0.32f;
             float start = x - segment + (w + segment) * Motion.easeOutCubic(t);
             dl.pushClipRect(x, y, x + w, y + height, true);
-            dl.addRectFilled(start, y, start + segment, y + height, u32(Theme.EMBER), r);
+            if (!Pixel.three(dl, Pixel.PROGRESS_FILL, start, y, start + segment, y + height, 2, u32(0xFFFFFF))) {
+                Pixel.rect(dl, start, y, start + segment, y + height, u32(Theme.EMBER));
+            }
             dl.popClipRect();
             Motion.keepAlive();
         } else {
             float shown = Motion.to("progress#" + Math.round(x) + ":" + Math.round(y), fraction, 10f);
             float fill = Math.max(height, w * Math.min(1f, shown));
-            dl.addRectFilled(x, y, x + fill, y + height, u32(Theme.EMBER), r);
-            dl.addCircleFilled(x + fill - r, y + r, r * 0.55f, u32(Theme.SUN, 0.85f));
+            if (!Pixel.three(dl, Pixel.PROGRESS_FILL, x, y, x + fill, y + height, 2, u32(0xFFFFFF))) {
+                Pixel.rect(dl, x, y, x + fill, y + height, u32(Theme.EMBER));
+            }
+            Pixel.dot(dl, x + fill - r, y + r, r * 0.45f, u32(Theme.SUN, 0.9f));
         }
         ImGui.dummy(w, height);
     }
@@ -381,17 +401,23 @@ final class Widgets {
     }
 
     static boolean beginCard(final String id, final float width, final float height, final int background, final float padX, final float padY) {
+        boolean pixel = Pixel.texture(Pixel.PANEL) != null;
         float[] bg = Theme.rgba(background, 1f);
         float[] border = Theme.rgba(Theme.BORDER_SOFT, 1f);
-        ImGui.pushStyleColor(ImGuiCol.ChildBg, bg[0], bg[1], bg[2], bg[3]);
-        ImGui.pushStyleColor(ImGuiCol.Border, border[0], border[1], border[2], border[3]);
+        ImGui.pushStyleColor(ImGuiCol.ChildBg, bg[0], bg[1], bg[2], pixel ? 0f : bg[3]);
+        ImGui.pushStyleColor(ImGuiCol.Border, border[0], border[1], border[2], pixel ? 0f : border[3]);
         ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, padX, padY);
-        ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, px(16));
-        int childFlags = ImGuiChildFlags.Borders | ImGuiChildFlags.AlwaysUseWindowPadding | (height <= 0 ? ImGuiChildFlags.AutoResizeY : 0);
+        ImGui.pushStyleVar(ImGuiStyleVar.ChildRounding, 0f);
+        int childFlags = (pixel ? 0 : ImGuiChildFlags.Borders) | ImGuiChildFlags.AlwaysUseWindowPadding | (height <= 0 ? ImGuiChildFlags.AutoResizeY : 0);
         int windowFlags = height <= 0 ? ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse : 0;
         boolean open = ImGui.beginChild(id, width, Math.max(0, height), childFlags, windowFlags);
         ImGui.popStyleVar(2);
         ImGui.popStyleColor(2);
+        if (pixel) {
+            float cx = ImGui.getWindowPosX();
+            float cy = ImGui.getWindowPosY();
+            Pixel.nine(ImGui.getWindowDrawList(), Pixel.PANEL, cx, cy, cx + ImGui.getWindowWidth(), cy + ImGui.getWindowHeight(), 4, u32(0xFFFFFF));
+        }
         return open;
     }
 
@@ -399,8 +425,21 @@ final class Widgets {
         ImGui.endChild();
     }
 
+    static void pixelHeading(final String title) {
+        float scale = PixelText.title();
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        PixelText.draw(ImGui.getWindowDrawList(), x, y + Pixel.unit(), title.toUpperCase(), scale, u32(Theme.SUN));
+        ImGui.dummy(PixelText.width(title.toUpperCase(), scale), PixelText.height(scale) + Pixel.unit() * 3);
+    }
+
     static void pageHeader(final String title, final String subtitle) {
-        text(Fonts.title, Theme.TEXT, title);
+        float scale = PixelText.headline() * 0.67f;
+        scale = Math.max(Pixel.unit(), Math.round(scale));
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        PixelText.draw(ImGui.getWindowDrawList(), x, y + Pixel.unit(), title.toUpperCase(), scale, u32(Theme.TEXT));
+        ImGui.dummy(PixelText.width(title.toUpperCase(), scale), PixelText.height(scale) + Pixel.unit() * 6);
         if (subtitle != null && !subtitle.isEmpty()) {
             ImGui.setCursorPosY(ImGui.getCursorPosY() - px(4));
             text(Fonts.body, Theme.MUTED, subtitle);
@@ -417,7 +456,11 @@ final class Widgets {
             ImGui.dummy(size, Fonts.heading.size());
             ImGui.sameLine(0, px(10));
         }
-        text(Fonts.heading, Theme.TEXT, title);
+        float scale = PixelText.small();
+        float tx = ImGui.getCursorScreenPosX();
+        float ty = ImGui.getCursorScreenPosY();
+        PixelText.draw(ImGui.getWindowDrawList(), tx, ty + (Fonts.heading.size() - PixelText.height(scale)) * 0.5f, title.toUpperCase(), scale, u32(Theme.TEXT));
+        ImGui.dummy(PixelText.width(title.toUpperCase(), scale), Fonts.heading.size());
         ImGui.dummy(0, px(2));
     }
 
@@ -484,12 +527,14 @@ final class Widgets {
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
         ImDrawList dl = ImGui.getWindowDrawList();
-        dl.addRectFilled(x, y, x + w, y + h, u32(Theme.SURFACE_HI), px(11));
+        Pixel.rect(dl, x, y, x + w, y + h, u32(Theme.SURFACE_HI));
         float segment = (w - px(8)) / labels.length;
         float pos = Motion.to(id + "#pos", selected, 16f);
         float sx = x + px(4) + pos * segment;
-        dl.addRectFilled(sx, y + px(4), sx + segment, y + h - px(4), u32(Theme.EMBER, 0.18f), px(8));
-        dl.addRect(sx, y + px(4), sx + segment, y + h - px(4), u32(Theme.EMBER, 0.55f), px(8), ImDrawFlags.None, px(1));
+        if (!Pixel.nine(dl, Pixel.PANEL_ACTIVE, sx, y + px(4), sx + segment, y + h - px(4), 4, u32(0xFFFFFF))) {
+            Pixel.rect(dl, sx, y + px(4), sx + segment, y + h - px(4), u32(Theme.EMBER, 0.18f));
+            Pixel.frame(dl, sx, y + px(4), sx + segment, y + h - px(4), u32(Theme.EMBER, 0.55f), px(1));
+        }
         int result = selected;
         for (int i = 0; i < labels.length; i++) {
             float bx = x + px(4) + i * segment;
@@ -512,7 +557,7 @@ final class Widgets {
 
     static void beginField() {
         ImGui.pushStyleVar(ImGuiStyleVar.FramePadding, px(12), px(10));
-        ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, px(10));
+        ImGui.pushStyleVar(ImGuiStyleVar.FrameRounding, 0f);
     }
 
     static void endField() {

@@ -144,11 +144,20 @@ final class ImageCache {
 
     private void decode(final String key, final int maxDimension) {
         try {
-            byte[] bytes = this.fetch(key);
+            boolean head = key.startsWith(PlayerHead.SCHEME);
+            byte[] bytes = head ? PlayerHead.skin(this.diskCache.resolveSibling("skins"), key) : this.fetch(key);
             ByteBuffer file = MemoryUtil.memAlloc(bytes.length);
             try {
                 file.put(bytes).flip();
-                Decoded decoded = decodeImage(key, file, maxDimension);
+                Decoded decoded = decodeImage(key, file, head ? 0 : maxDimension);
+                if (head) {
+                    Decoded skin = decoded;
+                    try {
+                        decoded = new Decoded(key, PlayerHead.render(skin.pixels(), skin.width(), skin.height()), PlayerHead.SIZE, PlayerHead.SIZE, false);
+                    } finally {
+                        skin.free();
+                    }
+                }
                 this.uploads.add(decoded);
             } finally {
                 MemoryUtil.memFree(file);
