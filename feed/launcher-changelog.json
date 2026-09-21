@@ -2,6 +2,18 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.8",
+      "date": "2026-09-21",
+      "title": "A launcher with a world of its own",
+      "changes": [
+        "The launcher has a new hand-made pixel-art look, with every button, panel and icon redrawn in ABNW's style.",
+        "The pages are now tabs along the top, with a status bar along the bottom that shows downloads, updates and what's running.",
+        "Home stands on a night-time hillside with drifting clouds and a moon, and each page sits further underground: through the soil, into the caves, down to a hidden dwarthen village and on into the deepslate.",
+        "Meet the penguin, who keeps you company next to the Play button and waves when you're about to play.",
+        "Your account now shows a little 3D head made from your own Minecraft skin, cached so it appears straight away next time."
+      ]
+    },
+    {
       "version": "1.0.6",
       "date": "2026-09-17",
       "title": "Offline accounts",
