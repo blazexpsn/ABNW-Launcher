@@ -2,6 +2,16 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.1.3",
+      "date": "2026-09-21",
+      "title": "Dress up your penguin",
+      "changes": [
+        "Instances now wear a penguin as their icon, and you can dress it up on the new Icon tab: a top hat, party hat or beanie, sunglasses or a monocle, a scarf or a bow tie, all free.",
+        "Rather have your own picture? Choose Custom image on the Icon tab.",
+        "The Cosmetics page has a Penguin wardrobe, where more accessories will be for sale."
+      ]
+    },
+    {
       "version": "1.0.9",
       "date": "2026-09-21",
       "title": "The penguin has news",
@@ -9,7 +19,8 @@
         "Update notices now come from the penguin, holding up a bright \"!\" whenever a new launcher or a new build of ABNW is ready.",
         "Anything still on its way now has the penguin holding up a clock.",
         "The penguin turns up all over: it gives you a thumbs-up tick, holds up a warning, brings you the news, carries your downloads, shoulders a pickaxe while you play and waits with a key when you need to sign in.",
-        "Home is now an igloo, and your account is a penguin."
+        "Home is now an igloo, your account is a penguin, Instances are a pair of penguins, and Cosmetics is a penguin in a top hat.",
+        "Patreon supporters have a penguin of their own, holding up a heart on a sign."
       ]
     },
     {

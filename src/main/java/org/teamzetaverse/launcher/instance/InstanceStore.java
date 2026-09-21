@@ -42,6 +42,15 @@ public final class InstanceStore {
                     Instance instance = Json.read(file, Instance.class);
                     instance.id = folder.getFileName().toString();
                     instance.folder(folder);
+                    if (instance.icon == null) {
+                        instance.icon = Instance.ICON_PENGUIN;
+                    }
+                    if (instance.iconFile == null) {
+                        instance.iconFile = "";
+                    }
+                    if (instance.penguin == null) {
+                        instance.penguin = new java.util.LinkedHashMap<>();
+                    }
                     this.instances.add(instance);
                 } catch (IOException e) {
                     System.err.println("Skipping instance " + folder.getFileName() + ": " + e.getMessage());

@@ -12,8 +12,12 @@ import imgui.flag.ImGuiStyleVar;
 import imgui.flag.ImGuiWindowFlags;
 import imgui.type.ImInt;
 import imgui.type.ImString;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import org.teamzetaverse.launcher.instance.Instance;
@@ -51,11 +55,24 @@ final class InstancesPage {
         Pixel.rect(dl, x, y, x + size, y + size, u32(colors[1]));
         dl.addRectFilledMultiColor(x + r * 0.3f, y + r * 0.3f, x + size - r * 0.3f, y + size - r * 0.3f, u32(colors[0]), u32(colors[0], 0.6f),
             u32(colors[1], 0.2f), u32(colors[0], 0.85f));
+        PenguinWardrobe wardrobe = PenguinWardrobe.current();
+        ImageCache.Texture custom = wardrobe == null ? null : wardrobe.customIcon(instance);
+        if (custom != null) {
+            float aspect = custom.aspect();
+            float cu = aspect > 1f ? (1f - 1f / aspect) * 0.5f : 0f;
+            float cv = aspect < 1f ? (1f - aspect) * 0.5f : 0f;
+            dl.addImage(custom.id(), x, y, x + size, y + size, cu, cv, 1f - cu, 1f - cv, u32(0xFFFFFF));
+        } else if (wardrobe != null && !Instance.ICON_IMAGE.equals(instance.icon)) {
+            dl.pushClipRect(x, y, x + size, y + size, true);
+            PenguinWardrobe.drawBust(dl, x, y, size, wardrobe.look(instance));
+            dl.popClipRect();
+        } else {
+            String initial = instance.name.isBlank() ? "?" : instance.name.substring(0, 1).toUpperCase();
+            Fonts.Face face = size >= px(52) ? Fonts.title : Fonts.heading;
+            float tw = Widgets.textWidth(face, initial);
+            Widgets.drawText(dl, face, x + (size - tw) * 0.5f, y + (size - face.size()) * 0.5f - px(1), u32(Theme.ON_EMBER, 0.9f), initial);
+        }
         Pixel.frame(dl, x, y, x + size, y + size, u32(colors[1]), Math.max(1f, r * 0.45f));
-        String initial = instance.name.isBlank() ? "?" : instance.name.substring(0, 1).toUpperCase();
-        Fonts.Face face = size >= px(52) ? Fonts.title : Fonts.heading;
-        float tw = Widgets.textWidth(face, initial);
-        Widgets.drawText(dl, face, x + (size - tw) * 0.5f, y + (size - face.size()) * 0.5f - px(1), u32(Theme.ON_EMBER, 0.9f), initial);
     }
 
     void draw() {
@@ -252,12 +269,150 @@ final class InstancesPage {
         }
         ImGui.dummy(0, px(10));
 
-        this.tab = this.tabs(new String[]{"Overview", "Game log"}, this.tab);
+        this.tab = this.tabs(new String[]{"Overview", "Icon", "Game log"}, this.tab);
         ImGui.dummy(0, px(12));
         if (this.tab == 0) {
             this.drawOverview(instance, busy || process != null);
+        } else if (this.tab == 1) {
+            this.drawIcon(instance);
         } else {
             this.drawLog(instance, process);
+        }
+    }
+
+    private void drawIcon(final Instance instance) {
+        PenguinWardrobe wardrobe = this.ui.wardrobe;
+        this.ui.loadCosmetics();
+        float width = ImGui.getContentRegionAvailX();
+        ImDrawList dl = ImGui.getWindowDrawList();
+        Widgets.fieldLabel("Icon", "A penguin you can dress up, or any picture you like.");
+        boolean image = Instance.ICON_IMAGE.equals(instance.icon);
+        int picked = Widgets.segmented("icon-mode", new String[]{"Penguin", "Custom image"}, image ? 1 : 0, Math.min(width, px(360)));
+        if (picked == 1 && !image) {
+            if (instance.customIcon() == null) {
+                this.chooseIcon(instance);
+            } else {
+                instance.icon = Instance.ICON_IMAGE;
+                this.ui.saveQuietly(instance);
+            }
+        } else if (picked == 0 && image) {
+            instance.icon = Instance.ICON_PENGUIN;
+            this.ui.saveQuietly(instance);
+        }
+        ImGui.dummy(0, px(12));
+
+        if (Instance.ICON_IMAGE.equals(instance.icon)) {
+            float tile = px(96);
+            float x = ImGui.getCursorScreenPosX();
+            float y = ImGui.getCursorScreenPosY();
+            drawTile(dl, instance, x, y, tile);
+            ImGui.dummy(tile, tile);
+            ImGui.sameLine(0, px(18));
+            ImGui.beginGroup();
+            Widgets.textWrapped(Fonts.body, Theme.MUTED, "Your picture is shown as it is. Penguin accessories only go on the penguin.");
+            ImGui.dummy(0, px(6));
+            if (Widgets.secondary("icon-choose", "Choose another image", Icons.Icon.IMAGE, true)) {
+                this.chooseIcon(instance);
+            }
+            ImGui.endGroup();
+            return;
+        }
+
+        float preview = px(150);
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        int[] colors = TILE_COLORS[Math.floorMod(instance.id.hashCode(), TILE_COLORS.length)];
+        Pixel.rect(dl, x, y, x + preview, y + preview, u32(colors[1]));
+        dl.addRectFilledMultiColor(x, y, x + preview, y + preview, u32(colors[0], 0.5f), u32(colors[0], 0.3f), u32(colors[1], 0.2f),
+            u32(colors[0], 0.4f));
+        PenguinWardrobe.drawFull(dl, x, y, preview, wardrobe.look(instance));
+        Pixel.frame(dl, x, y, x + preview, y + preview, u32(colors[1]), px(3));
+        ImGui.dummy(preview, preview);
+        ImGui.sameLine(0, px(20));
+        ImGui.beginGroup();
+        float swatch = px(54);
+        float gap = px(6);
+        float rowWidth = Math.max(swatch, width - preview - px(20));
+        int perRow = Math.max(1, (int)((rowWidth + gap) / (swatch + gap)));
+        for (int s = 0; s < PenguinWardrobe.SLOTS.length; s++) {
+            String slot = PenguinWardrobe.SLOTS[s];
+            Widgets.text(Fonts.label, Theme.MUTED, PenguinWardrobe.SLOT_LABELS[s]);
+            String chosen = wardrobe.chosenId(instance, slot);
+            List<PenguinWardrobe.Accessory> items = wardrobe.accessories(slot);
+            if (this.swatch(slot + "-none", List.of(), PenguinWardrobe.NONE.equals(chosen), false, "Nothing", swatch)) {
+                wardrobe.wear(instance, slot, PenguinWardrobe.NONE);
+                this.ui.saveQuietly(instance);
+            }
+            int count = 1;
+            for (PenguinWardrobe.Accessory item : items) {
+                if (count % perRow != 0) {
+                    ImGui.sameLine(0, gap);
+                }
+                boolean owned = wardrobe.owns(item);
+                String tip = owned ? item.name() : item.name() + " (" + item.price() + " in the Cosmetics store)";
+                if (this.swatch(slot + "-" + item.id(), List.of(item.texture()), item.id().equals(chosen), !owned, tip, swatch)) {
+                    if (owned) {
+                        wardrobe.wear(instance, slot, item.id());
+                        this.ui.saveQuietly(instance);
+                    } else {
+                        this.ui.navigate(LauncherUi.Page.COSMETICS);
+                    }
+                }
+                count++;
+            }
+            ImGui.dummy(0, px(6));
+        }
+        ImGui.endGroup();
+    }
+
+    private boolean swatch(final String id, final List<String> textures, final boolean selected, final boolean locked, final String tooltip,
+                           final float size) {
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        boolean clicked = ImGui.invisibleButton("sw-" + id, size, size);
+        boolean hovered = ImGui.isItemHovered();
+        if (hovered) {
+            ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
+            Widgets.tooltip(tooltip);
+        }
+        ImDrawList dl = ImGui.getWindowDrawList();
+        Pixel.rect(dl, x, y, x + size, y + size, u32(hovered ? Theme.SURFACE_HOVER : Theme.SURFACE_HI));
+        dl.pushClipRect(x, y, x + size, y + size, true);
+        PenguinWardrobe.drawBust(dl, x + px(2), y + px(2), size - px(4), textures);
+        dl.popClipRect();
+        if (locked) {
+            Pixel.rect(dl, x, y, x + size, y + size, u32(Theme.BG, 0.55f));
+            Icons.draw(dl, Icons.Icon.HEART, x + size - px(18), y + px(4), px(14), u32(Theme.SUN));
+        }
+        Pixel.frame(dl, x, y, x + size, y + size, u32(selected ? Theme.EMBER : Theme.BORDER_SOFT), selected ? px(2) : px(1));
+        return clicked;
+    }
+
+    private void chooseIcon(final Instance instance) {
+        Path chosen = Desktop.chooseImage();
+        if (chosen == null) {
+            return;
+        }
+        try {
+            String lower = chosen.getFileName().toString().toLowerCase(Locale.ROOT);
+            String extension = lower.endsWith(".png") ? "png" : lower.endsWith(".jpg") ? "jpg" : lower.endsWith(".jpeg") ? "jpeg" : null;
+            if (extension == null) {
+                throw new IOException("Instance icons can be PNG or JPEG images.");
+            }
+            if (Files.size(chosen) > 8L * 1024 * 1024) {
+                throw new IOException("That image is over 8 MB. Choose a smaller one.");
+            }
+            Path previous = Instance.ICON_IMAGE.equals(instance.icon) ? instance.customIcon() : null;
+            String name = "icon-" + System.currentTimeMillis() + "." + extension;
+            Files.copy(chosen, instance.folder().resolve(name));
+            instance.iconFile = name;
+            instance.icon = Instance.ICON_IMAGE;
+            this.ui.saveQuietly(instance);
+            if (previous != null) {
+                Files.deleteIfExists(previous);
+            }
+        } catch (IOException e) {
+            this.ui.fail(e);
         }
     }
 

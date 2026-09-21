@@ -39,6 +39,7 @@ final class CosmeticsPage {
     private Progress linking;
     private String linkUrl;
     private Progress unlinking;
+    private Progress purchasing;
 
     CosmeticsPage(final LauncherUi ui) {
         this.ui = ui;
@@ -72,6 +73,10 @@ final class CosmeticsPage {
             } else {
                 this.drawLinked(width, account.get());
             }
+            if (this.status != null) {
+                ImGui.dummy(0, px(8));
+                this.drawWardrobe(width, account.get());
+            }
         }
         ImGui.endGroup();
     }
@@ -93,7 +98,7 @@ final class CosmeticsPage {
     private void drawLink(final float width, final Account account) {
         String body = "Members of the official ABNW Patreon unlock supporter cosmetics. They're purely visual, never affect gameplay, "
             + "and stay unlocked for as long as you support.";
-        this.hero("cos-link", width, "ABNW SUPPORTERS", "Link your Patreon", body, Icons.Icon.CROWN, () -> {
+        this.hero("cos-link", width, "ABNW SUPPORTERS", "Link your Patreon", body, Icons.Icon.PENGUIN_SUPPORTER, () -> {
             if (this.linking != null) {
                 Widgets.primary("cos-waiting", "Waiting for Patreon…", Icons.Icon.CLOCK, 0, px(48), false);
                 ImGui.sameLine(0, px(10));
@@ -131,11 +136,11 @@ final class CosmeticsPage {
         ImGui.dummy(0, px(8));
 
         if (Widgets.beginCard("cos-patreon", width, 0, Theme.SURFACE, px(26), px(22))) {
-            Widgets.cardTitle(Icons.Icon.HEART, "Patreon");
+            Widgets.cardTitle(Icons.Icon.PENGUIN_SUPPORTER, "Patreon");
             Widgets.pill("Linked", Theme.OK, Theme.OK, 0.13f, Icons.Icon.CHECK);
             ImGui.sameLine(0, px(8));
             if (patreon.active()) {
-                Widgets.pill("Active patron", Theme.SUN, Theme.SUN, 0.13f, Icons.Icon.CROWN);
+                Widgets.pill("Active patron", Theme.SUN, Theme.SUN, 0.13f, Icons.Icon.HEART);
             } else if ("token_revoked".equals(patreon.status())) {
                 Widgets.pill("Access removed on Patreon", Theme.WARN, Theme.WARN, 0.13f, Icons.Icon.ALERT);
             } else {
@@ -165,6 +170,100 @@ final class CosmeticsPage {
         }
         Widgets.endCard();
         this.drawError();
+    }
+
+    private void drawWardrobe(final float width, final Account account) {
+        PenguinWardrobe wardrobe = this.ui.wardrobe;
+        if (Widgets.beginCard("cos-wardrobe", width, 0, Theme.SURFACE, px(26), px(22))) {
+            Widgets.cardTitle(Icons.Icon.COSMETICS, "Penguin wardrobe");
+            Widgets.textWrapped(Fonts.body, Theme.MUTED, "Dress up the penguin on your instance icons. The top hat, party hat, beanie, sunglasses, "
+                + "monocle, scarves and bow tie are free for everyone; pick them on an instance's Icon tab.");
+            ImGui.dummy(0, px(8));
+            java.util.List<PenguinWardrobe.Accessory> items = wardrobe.store();
+            if (items.isEmpty()) {
+                Widgets.mascotMessage(Icons.Icon.SOON, wardrobe.storeLoading() ? "Opening the wardrobe…"
+                    : "More accessories are on their way to the store.", Theme.MUTED);
+            } else {
+                float gap = px(12);
+                int columns = width >= px(640) ? 3 : 2;
+                float inner = ImGui.getContentRegionAvailX();
+                float cardWidth = (inner - gap * (columns - 1)) / columns;
+                for (int i = 0; i < items.size(); i++) {
+                    if (i % columns != 0) {
+                        ImGui.sameLine(0, gap);
+                    }
+                    this.storeItem(items.get(i), cardWidth, account);
+                }
+            }
+        }
+        Widgets.endCard();
+    }
+
+    private void storeItem(final PenguinWardrobe.Accessory item, final float width, final Account account) {
+        float h = px(132);
+        float x = ImGui.getCursorScreenPosX();
+        float y = ImGui.getCursorScreenPosY();
+        ImDrawList dl = ImGui.getWindowDrawList();
+        Pixel.rect(dl, x, y, x + width, y + h, u32(Theme.BG));
+        Pixel.frame(dl, x, y, x + width, y + h, u32(Theme.BORDER_SOFT), px(1));
+        float art = px(92);
+        float ax = x + px(12);
+        float ay = y + (h - art) * 0.5f;
+        Pixel.rect(dl, ax, ay, ax + art, ay + art, u32(Theme.SURFACE_HI));
+        PenguinWardrobe.drawBust(dl, ax, ay, art, java.util.List.of(item.texture()));
+        float tx = ax + art + px(14);
+        float tw = x + width - tx - px(12);
+        ImGui.setCursorScreenPos(tx, y + px(14));
+        ImGui.beginGroup();
+        Widgets.text(Fonts.label, Theme.TEXT, Widgets.ellipsize(Fonts.label, item.name(), tw));
+        Widgets.drawTextWrapped(dl, Fonts.small, tx, ImGui.getCursorScreenPosY(), u32(Theme.FAINT), item.description(), tw);
+        ImGui.setCursorScreenPos(tx, y + h - px(50));
+        boolean owned = this.ui.wardrobe.owns(item);
+        if (owned) {
+            Widgets.pill("Owned", Theme.OK, Theme.OK, 0.13f, Icons.Icon.CHECK);
+        } else {
+            boolean busy = this.purchasing != null;
+            if (Widgets.primary("buy-" + item.id(), busy ? "Waiting…" : "Buy " + item.price(), Icons.Icon.HEART, 0, px(38), !busy)) {
+                this.startPurchase(account, item);
+            }
+        }
+        ImGui.endGroup();
+        ImGui.setCursorScreenPos(x, y);
+        ImGui.dummy(width, h);
+    }
+
+    private void startPurchase(final Account account, final PenguinWardrobe.Accessory item) {
+        this.error = null;
+        this.purchasing = this.ui.tasks.submit("Buying " + item.name(), progress -> {
+            progress.status("Opening checkout…");
+            String url = this.withSession(account, progress, token -> this.ui.cosmetics.startCheckout(token, item.id()));
+            this.ui.tasks.onUi(() -> Desktop.browse(url));
+            progress.status("Finish paying in your browser. " + item.name() + " unlocks as soon as it goes through.");
+            long deadline = System.currentTimeMillis() + 20L * 60 * 1000;
+            while (System.currentTimeMillis() < deadline) {
+                for (long waited = 0; waited < POLL_MILLIS; waited += 250) {
+                    progress.checkCancelled();
+                    Thread.sleep(250);
+                }
+                CosmeticsClient.Status current = this.withSession(account, progress, token -> this.ui.cosmetics.status(token));
+                if (current.unlocked().contains(item.id())) {
+                    return current;
+                }
+            }
+            throw new IOException("Checkout timed out. If you paid, " + item.name() + " will appear the next time the launcher checks.");
+        }, bought -> {
+            if (account.uuid.equals(this.loadedFor)) {
+                this.status = bought;
+            }
+        }, failure -> this.error = message(failure));
+    }
+
+    java.util.Set<String> unlocked() {
+        return this.status == null ? java.util.Set.of() : java.util.Set.copyOf(this.status.unlocked());
+    }
+
+    void load(final Account account) {
+        this.ensureLoaded(account);
     }
 
     private void drawError() {
@@ -225,6 +324,9 @@ final class CosmeticsPage {
         }
         if (this.unlinking != null && !this.ui.tasks.running().contains(this.unlinking)) {
             this.unlinking = null;
+        }
+        if (this.purchasing != null && !this.ui.tasks.running().contains(this.purchasing)) {
+            this.purchasing = null;
         }
     }
 

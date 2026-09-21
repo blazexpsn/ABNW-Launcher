@@ -98,6 +98,17 @@ public final class CosmeticsClient {
         return new PatreonLink(url, System.currentTimeMillis() + Json.number(body, "expiresIn", 600) * 1000L);
     }
 
+    public String startCheckout(final String token, final String cosmeticId) throws IOException {
+        JsonObject request = new JsonObject();
+        request.addProperty("cosmeticId", cosmeticId);
+        JsonObject body = this.call("POST", "/v1/store/checkout", request, token);
+        String url = Json.string(body, "url");
+        if (url == null || !url.startsWith("https://checkout.stripe.com/")) {
+            throw new IOException("The cosmetics service sent an unexpected checkout link.");
+        }
+        return url;
+    }
+
     public void unlinkPatreon(final String token) throws IOException {
         this.call("DELETE", "/v1/patreon/link", null, token);
     }

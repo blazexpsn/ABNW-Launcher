@@ -61,6 +61,15 @@ final class Desktop {
         }
     }
 
+    static Path chooseImage() {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            PointerBuffer filters = stack.mallocPointer(3);
+            filters.put(stack.UTF8("*.png")).put(stack.UTF8("*.jpg")).put(stack.UTF8("*.jpeg")).flip();
+            String chosen = TinyFileDialogs.tinyfd_openFileDialog("Choose an instance icon", "", filters, "Images (*.png, *.jpg)", false);
+            return chosen == null ? null : Path.of(chosen);
+        }
+    }
+
     static Path chooseJava() {
         String chosen = TinyFileDialogs.tinyfd_openFileDialog("Choose a Java executable", "", null, null, false);
         return chosen == null ? null : Path.of(chosen);

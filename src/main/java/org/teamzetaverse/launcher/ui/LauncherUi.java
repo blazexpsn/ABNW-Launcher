@@ -89,6 +89,7 @@ public final class LauncherUi {
     private final InstancesPage instancesPage;
     private final NewsPage newsPage;
     private final CosmeticsPage cosmeticsPage;
+    final PenguinWardrobe wardrobe;
     private final SettingsPage settingsPage;
     private final Map<String, long[]> installCache = new HashMap<>();
     private final long openedAt = System.currentTimeMillis() / 1000L;
@@ -124,6 +125,7 @@ public final class LauncherUi {
         this.instancesPage = new InstancesPage(this);
         this.newsPage = new NewsPage(this);
         this.cosmeticsPage = new CosmeticsPage(this);
+        this.wardrobe = new PenguinWardrobe(this);
         this.settingsPage = new SettingsPage(this);
         this.applyFeed(FeedService.bundled());
 
@@ -228,7 +230,7 @@ public final class LauncherUi {
         tx = this.drawTab(Page.HOME, Icons.Icon.HOME, "Home", tx, tabY, tabH);
         tx = this.drawTab(Page.INSTANCES, Icons.Icon.INSTANCES, "Instances", tx, tabY, tabH);
         tx = this.drawTab(Page.NEWS, Icons.Icon.NEWS, "News", tx, tabY, tabH);
-        tx = this.drawTab(Page.COSMETICS, Icons.Icon.CROWN, "Cosmetics", tx, tabY, tabH);
+        tx = this.drawTab(Page.COSMETICS, Icons.Icon.COSMETICS, "Cosmetics", tx, tabY, tabH);
         this.drawTab(Page.SETTINGS, Icons.Icon.SETTINGS, "Settings", tx, tabY, tabH);
 
         float accountW = Math.min(px(236), w * 0.24f);
@@ -603,6 +605,14 @@ public final class LauncherUi {
             message = error.getClass().getSimpleName();
         }
         this.errors.add(message);
+    }
+
+    java.util.Set<String> unlockedCosmetics() {
+        return this.cosmeticsPage.unlocked();
+    }
+
+    void loadCosmetics() {
+        this.currentAccount().filter(account -> !account.devOffline).ifPresent(this.cosmeticsPage::load);
     }
 
     MicrosoftAuth auth() {

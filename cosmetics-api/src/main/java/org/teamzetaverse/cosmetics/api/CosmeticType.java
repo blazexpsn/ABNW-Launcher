@@ -10,7 +10,10 @@ public enum CosmeticType {
     BACK(Set.of("model", "texture"), Set.of("model", "texture", "emissive")),
     WINGS(Set.of("model", "texture"), Set.of("model", "texture", "emissive", "animation")),
     AURA(Set.of(), Set.of()),
-    TRAIL(Set.of(), Set.of());
+    TRAIL(Set.of(), Set.of()),
+    PENGUIN_HEAD(Set.of("texture"), Set.of("texture")),
+    PENGUIN_FACE(Set.of("texture"), Set.of("texture")),
+    PENGUIN_NECK(Set.of("texture"), Set.of("texture"));
 
     private final Set<String> requiredAssets;
     private final Set<String> allowedAssets;
@@ -22,6 +25,10 @@ public enum CosmeticType {
 
     public String id() {
         return this.name().toLowerCase(Locale.ROOT);
+    }
+
+    public boolean isPenguinAccessory() {
+        return this == PENGUIN_HEAD || this == PENGUIN_FACE || this == PENGUIN_NECK;
     }
 
     public boolean isParticle() {
