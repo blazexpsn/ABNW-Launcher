@@ -2,6 +2,29 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.5",
+      "date": "2026-09-21",
+      "title": "ABNW by name",
+      "changes": [
+        "The game window is now titled ABNW with its version, and it uses the ABNW icon, the same one as the launcher.",
+        "Mods can now give extra attributes to any mob, including the game's own."
+      ]
+    },
+    {
+      "version": "1.0.9.3",
+      "date": "2026-09-20",
+      "title": "Light that answers, and light you can build with",
+      "changes": [
+        "Redstone lamps and copper bulbs light the world again when they turn on, instead of only changing how they look. The same was true of furnaces, smokers and blast furnaces while lit, of redstone ore, of candles, of respawn anchors, sea pickles, cave vines, light blocks, trial spawners and vaults, and all of them now give the light they should.",
+        "A campfire, a redstone torch and a light block no longer give off light when they are out or dimmed.",
+        "New slabs and stairs for glass, all 16 stained glasses and tinted glass. They stay as clear as the glass they are cut from and, like glass, need silk touch to come back.",
+        "New glowstone and shroomlight slabs and stairs, and redstone lamp and copper bulb slabs and stairs that still answer redstone and light up as the whole block does.",
+        "New copper grate slabs and stairs, at every stage of copper and in waxed and bare forms.",
+        "Bare copper cuts weather where they stand, just as the whole blocks do: a copper bulb or grate slab goes from copper to exposed, weathered and oxidized. Honeycomb holds one at the stage it has reached, and an axe scrapes the wax off or takes it back a stage.",
+        "Vertical slabs are now placed by sneaking, the way vertical stairs are. Placed without sneaking, a slab lands exactly where it always did, so the top half is reachable on every face again."
+      ]
+    },
+    {
       "version": "1.0.9.2",
       "date": "2026-09-20",
       "title": "Doors keep their carpet in the right half",
