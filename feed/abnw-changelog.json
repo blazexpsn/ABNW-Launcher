@@ -2,6 +2,18 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.7",
+      "date": "2026-09-21",
+      "title": "Permissions for every command",
+      "changes": [
+        "Every command, the game's own and every mod's, now has a permission node, such as minecraft.command.gamemode or mymod.command.home. With nothing set up, commands work exactly as they did before.",
+        "Permission groups come from datapacks, in data/<namespace>/permission_group/. Groups can inherit from each other, apply to everyone or to an op level, and use wildcards and denials.",
+        "The new /permissions command (or /perms) shows what anyone may do and why, puts players in groups, and allows or denies single commands for one player.",
+        "On singleplayer and LAN worlds, /op and /deop now work, so the host can give friends commands without turning them on for everyone. The host always has every permission while commands are on.",
+        "The game window now really does show the ABNW icon."
+      ]
+    },
+    {
       "version": "1.0.9.5",
       "date": "2026-09-21",
       "title": "ABNW by name",
