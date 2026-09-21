@@ -23,6 +23,8 @@ final class World {
     private static final String DEEPSLATE = "resource:/assets/ui/deepslate.png";
     private static final String DEEP = "resource:/assets/ui/deep.png";
     private static final String PENGUIN = "resource:/assets/ui/penguin.png";
+    private static final String PENGUIN_ALERT = "resource:/assets/ui/penguin_alert.png";
+    private static final String PENGUIN_CLOCK = "resource:/assets/ui/penguin_clock.png";
     private static final String[] CLOUDS = {"resource:/assets/ui/cloud0.png", "resource:/assets/ui/cloud1.png", "resource:/assets/ui/cloud2.png"};
 
     private static final float SOIL_TOP = HORIZON + 4f;
@@ -178,6 +180,21 @@ final class World {
         float px0 = Math.round(x + (box - w) * 0.5f);
         float py0 = Math.round(y + (box - h) * 0.5f);
         dl.addImage(sheet.id(), px0, py0, px0 + w, py0 + h, 0f, 0f, (float)PENGUIN_W / sheet.width(), 1f, u32(0xFFFFFF));
+    }
+
+    static void penguinHolding(final ImDrawList dl, final boolean alert, final float x, final float y, final float box) {
+        ImageCache.Texture sprite = Pixel.texture(alert ? PENGUIN_ALERT : PENGUIN_CLOCK);
+        if (sprite == null) {
+            Icons.draw(dl, alert ? Icons.Icon.DOWNLOAD : Icons.Icon.CLOCK, x, y, box, u32(0xFFFFFF));
+            return;
+        }
+        float s = Math.max(1f, Math.round(box * 1.2f / sprite.height()));
+        float w = sprite.width() * s;
+        float h = sprite.height() * s;
+        float bob = (ImGui.getTime() % 1.2) < 0.6 ? 0f : s;
+        float px0 = Math.round(x + (box - w) * 0.5f);
+        float py0 = Math.round(y + box - h - bob);
+        dl.addImage(sprite.id(), px0, py0, px0 + w, py0 + h, 0f, 0f, 1f, 1f, u32(0xFFFFFF));
     }
 
     static float penguinWidth() {

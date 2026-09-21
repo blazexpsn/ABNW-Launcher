@@ -163,7 +163,7 @@ final class SettingsPage {
                 : "Checking for updates…";
             this.row(BuildInfo.isDevBuild() ? "Development build" : "Launcher v" + BuildInfo.VERSION, help, () -> {
                 if (update != null) {
-                    if (Widgets.primary("set-get-update", "Download", Icons.Icon.DOWNLOAD, 0, px(40), true)) {
+                    if (Widgets.primary("set-get-update", "Download", Icons.Icon.UPDATE, 0, px(40), true)) {
                         Desktop.browse(update.url());
                     }
                     ImGui.sameLine(0, px(8));

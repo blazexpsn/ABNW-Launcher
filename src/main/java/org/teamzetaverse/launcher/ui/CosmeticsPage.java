@@ -55,7 +55,7 @@ final class CosmeticsPage {
         Optional<Account> account = this.ui.currentAccount();
         if (!BuildInfo.cosmeticsConfigured()) {
             this.hero("cos-soon", width, "COSMETICS", "Cosmetics coming soon",
-                "Supporter cosmetics and the cosmetics store aren't open yet. Keep an eye on the News page.", Icons.Icon.SPARK, null);
+                "Supporter cosmetics and the cosmetics store aren't open yet. Keep an eye on the News page.", Icons.Icon.SOON, null);
         } else if (account.isEmpty()) {
             this.hero("cos-signin", width, "ABNW SUPPORTERS", "Sign in to link Patreon",
                 "Sign in with your Microsoft account first, then link your Patreon to unlock supporter cosmetics.", Icons.Icon.CROWN, () -> {
@@ -127,7 +127,7 @@ final class CosmeticsPage {
                 + "Cosmetics you buy in game will be yours to keep forever."
             : "Supporter cosmetics are being made right now. Your Patreon is linked, but it isn't an active membership of the official "
                 + "ABNW Patreon, so they'll unlock as soon as it is.";
-        this.hero("cos-coming", width, "COSMETICS", "Cosmetics coming soon", body, Icons.Icon.SPARK, null);
+        this.hero("cos-coming", width, "COSMETICS", "Cosmetics coming soon", body, Icons.Icon.SOON, null);
         ImGui.dummy(0, px(8));
 
         if (Widgets.beginCard("cos-patreon", width, 0, Theme.SURFACE, px(26), px(22))) {

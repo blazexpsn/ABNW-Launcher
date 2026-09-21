@@ -43,7 +43,7 @@ final class Announcements {
             return switch (this.level == null ? "" : this.level.toLowerCase()) {
                 case "success" -> Theme.OK;
                 case "warning" -> Theme.WARN;
-                case "launch", "release" -> Theme.SUN;
+                case "launch", "release", "update" -> Theme.SUN;
                 default -> Theme.EMBER;
             };
         }
@@ -52,7 +52,8 @@ final class Announcements {
             return switch (this.level == null ? "" : this.level.toLowerCase()) {
                 case "success" -> Icons.Icon.CHECK;
                 case "warning" -> Icons.Icon.ALERT;
-                case "launch", "release" -> Icons.Icon.SPARK;
+                case "release", "update" -> Icons.Icon.UPDATE;
+                case "launch" -> Icons.Icon.SPARK;
                 default -> Icons.Icon.MEGAPHONE;
             };
         }

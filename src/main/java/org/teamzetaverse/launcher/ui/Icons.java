@@ -8,7 +8,7 @@ final class Icons {
     enum Icon {
         HOME, INSTANCES, NEWS, SETTINGS, PLAY, STOP, PLUS, IMPORT, EXPORT, FOLDER, TRASH, EDIT, USER, CLOSE,
         CHEVRON_LEFT, CHEVRON_RIGHT, CHEVRON_DOWN, REFRESH, CHECK, TERMINAL, SPARK, MEGAPHONE, CLOCK, IMAGE,
-        LOGOUT, EXTERNAL, ALERT, COPY, CHIP, COFFEE, WRENCH, CUBE, DISCORD_WAVE, DOWNLOAD, SWAP, CROWN, HEART
+        LOGOUT, EXTERNAL, ALERT, COPY, CHIP, COFFEE, WRENCH, CUBE, DISCORD_WAVE, DOWNLOAD, SWAP, CROWN, HEART, UPDATE, SOON
     }
 
     private static final float PI = (float)Math.PI;
@@ -25,6 +25,10 @@ final class Icons {
     }
 
     static void draw(final ImDrawList dl, final Icon icon, final float x, final float y, final float size, final int color) {
+        if (icon == Icon.UPDATE || icon == Icon.SOON) {
+            World.penguinHolding(dl, icon == Icon.UPDATE, x, y, size);
+            return;
+        }
         if (Pixel.icon(dl, icon.ordinal(), x, y, size, color)) {
             return;
         }

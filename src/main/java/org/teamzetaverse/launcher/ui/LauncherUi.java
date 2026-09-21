@@ -326,7 +326,8 @@ public final class LauncherUi {
         UpdateChecker.LauncherUpdate update = this.updateStatus.launcherUpdate();
         if (update != null) {
             String label = "UPDATE READY";
-            float lw = PixelText.width(label, u) + iconSize + u * 16;
+            float alertSize = u * 12f;
+            float lw = PixelText.width(label, u) + alertSize + u * 16;
             float lx = right - vw - u * 10 - lw;
             float ly = y + u * 3;
             ImGui.setCursorScreenPos(lx, ly);
@@ -338,8 +339,8 @@ public final class LauncherUi {
             }
             float hv = Motion.hover("status-update#hover", hovered);
             Pixel.three(dl, Pixel.BUTTON_PRIMARY, lx, ly, lx + lw, ly + h - u * 5, 11, u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv)));
-            Icons.draw(dl, Icons.Icon.DOWNLOAD, lx + u * 6, ly + (h - u * 5 - iconSize) * 0.4f, iconSize, u32(0xFFFFFF));
-            PixelText.draw(dl, lx + u * 6 + iconSize + u * 4, ly + (h - u * 5) * 0.41f - PixelText.height(u) * 0.5f, label, u, u32(0xFFFFFF));
+            Icons.draw(dl, Icons.Icon.UPDATE, lx + u * 5, ly + h - u * 7 - alertSize, alertSize, u32(0xFFFFFF));
+            PixelText.draw(dl, lx + u * 6 + alertSize + u * 4, ly + (h - u * 5) * 0.41f - PixelText.height(u) * 0.5f, label, u, u32(0xFFFFFF));
             if (clicked) {
                 Desktop.browse(update.url());
             }
@@ -789,7 +790,7 @@ public final class LauncherUi {
             entry.id = "launcher-update-" + update.version();
             entry.title = "A new launcher update is available";
             entry.message = "Launcher v" + update.version() + " is ready with the latest improvements.";
-            entry.level = "info";
+            entry.level = "update";
             entry.sticky = true;
             entry.actionLabel = "Download";
             entry.action = () -> Desktop.browse(update.url());
@@ -805,7 +806,7 @@ public final class LauncherUi {
                 entry.id = "game-release-" + latest.id;
                 entry.title = latest.displayName() + " is here";
                 entry.message = "A brand new build of A Brand New World is ready. Switch an instance over and dive in.";
-                entry.level = "release";
+                entry.level = "update";
                 entry.style = "toast";
                 entry.sticky = true;
                 entry.actionLabel = "Take me there";

@@ -224,7 +224,7 @@ final class InstancesPage {
         Release latest = this.ui.latestRelease();
         if (this.ui.isOutdated(instance) && latest != null) {
             ImGui.sameLine(0, px(10));
-            if (Widgets.button("det-update", "Update to " + latest.displayName(), Icons.Icon.SPARK, Widgets.Variant.SECONDARY, 0, px(48), process == null && !busy)) {
+            if (Widgets.button("det-update", "Update to " + latest.displayName(), Icons.Icon.UPDATE, Widgets.Variant.SECONDARY, 0, px(48), process == null && !busy)) {
                 this.ui.dialogs.openChangeRelease(instance, latest);
             }
         }

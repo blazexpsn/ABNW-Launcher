@@ -352,7 +352,7 @@ final class HomePage {
             }
             if (update != null) {
                 ImGui.dummy(0, px(4));
-                if (Widgets.primary("home-launcher-update", "Get launcher v" + update.version(), Icons.Icon.DOWNLOAD, -1, px(40), true)) {
+                if (Widgets.primary("home-launcher-update", "Get launcher v" + update.version(), Icons.Icon.UPDATE, -1, px(40), true)) {
                     Desktop.browse(update.url());
                 }
             }
@@ -387,7 +387,7 @@ final class HomePage {
         Feed.Teaser teaser = teasers.get(index);
 
         float pad = px(18);
-        float textWidth = width - pad * 2 - px(34);
+        float textWidth = width - pad * 2 - px(76);
         float textHeight = Widgets.textHeight(Fonts.label, teaser.text, textWidth);
         float h = pad * 2 + Fonts.tiny.size() + px(6) + Math.max(textHeight, Fonts.label.size() * 2 + px(4));
         float x = ImGui.getCursorScreenPosX();
@@ -396,8 +396,8 @@ final class HomePage {
         Pixel.rect(dl, x, y, x + width, y + h, u32(Theme.BG));
         Pixel.frame(dl, x, y, x + width, y + h, u32(Theme.BORDER_SOFT), px(1));
         float pulse = 0.55f + 0.2f * (float)Math.sin(now * 1.6);
-        Icons.draw(dl, Icons.Icon.SPARK, x + pad, y + pad, px(20), u32(Theme.SUN, pulse));
-        float tx = x + pad + px(34);
+        Icons.draw(dl, Icons.Icon.SOON, x + pad - px(6), y + (h - px(48)) * 0.5f, px(48), u32(Theme.SUN, pulse));
+        float tx = x + pad + px(76);
         String hint = teaser.hint == null || teaser.hint.isBlank() ? "Coming soon" : teaser.hint;
         Widgets.drawOverline(dl, tx, y + pad, u32(Theme.FAINT, alpha), hint);
         Widgets.drawTextWrapped(dl, Fonts.label, tx, y + pad + Fonts.tiny.size() + px(6), u32(Theme.MUTED, alpha), teaser.text, textWidth);

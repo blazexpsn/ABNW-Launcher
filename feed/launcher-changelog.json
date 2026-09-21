@@ -2,6 +2,15 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9",
+      "date": "2026-09-21",
+      "title": "The penguin has news",
+      "changes": [
+        "Update notices now come from the penguin, holding up a bright \"!\" whenever a new launcher or a new build of ABNW is ready.",
+        "Anything still on its way now has the penguin holding up a clock."
+      ]
+    },
+    {
       "version": "1.0.8",
       "date": "2026-09-21",
       "title": "A launcher with a world of its own",
