@@ -2,6 +2,17 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.14",
+      "date": "2026-09-22",
+      "title": "Magic balance",
+      "changes": [
+        "Ember, Frost Bolt and Magic Missile are no longer free. Each cast costs half a hunger point, and they recharge in 2 to 2.5 seconds instead of 1 to 1.5, so they stay handy without replacing a bow.",
+        "Polymorph no longer works on villagers, wandering traders, tamed animals or anything with a name tag.",
+        "Tunnel recharges in 15 seconds instead of 5 and costs 3 hunger instead of 2.",
+        "Goodberry takes 2 bone meal instead of 1."
+      ]
+    },
+    {
       "version": "1.0.9.13",
       "date": "2026-09-22",
       "title": "The Magic Update: cauldrons, cooking and spells",
