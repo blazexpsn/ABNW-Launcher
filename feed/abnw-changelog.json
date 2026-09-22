@@ -2,6 +2,36 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.13",
+      "date": "2026-09-22",
+      "title": "The Magic Update: cauldrons, cooking and spells",
+      "changes": [
+        "Potions are now brewed in the cauldron. Pour in Bottles of Mystical Essence, add the ingredients in order, stir with the new Iron Ladle and keep a fire, campfire, lava or magma block underneath. Every vanilla potion has a new recipe. Gunpowder added last makes a splash potion, then dragon's breath a lingering one, so tipped arrows work again.",
+        "The brewing stand now makes one thing: Bottles of Mystical Essence, from water, Diamond Dust and nether wart. One diamond crafts into 4 Diamond Dust.",
+        "Standing in a cauldron of finished potion gives you its effect, and drains the cauldron as you do. Mobs too, so a cauldron of harming makes a trap.",
+        "The cauldron is also a cooking pot. Put food into water, milk or honey, stir it over heat and scoop out bowls of soup. There are ten new soups, including Golden Carrot Soup and a Nether Stew that needs lava underneath, and the vanilla stews come out better from a cauldron. Add any food as an extra, or pour a potion in to season it (weaker, shared between the bowls). Each bowl is coloured by what went into it.",
+        "New crop: garlic. Break an allium and you may find a bulb.",
+        "Dairy: cows and mooshrooms sometimes drop rennet. Churn cold milk in a cauldron into butter, or heat milk with rennet into a cheese wheel that ages from fresh to aged over a few days. Slice it by hand or craft a wheel into 9 slices. Garlic bread is bread, garlic and butter.",
+        "The Potion Book lists every soup, and every potion you've learned, with exactly how to make it. Learn potions from Knowledge Scrolls found in villages, dungeons and trial chambers, or by working a recipe out yourself. The new do_global_knowledge game rule lets everyone share what anyone learns.",
+        "Spells: 46 of them across eight schools, from Fire, Frost and Storm to Life, Death and Nature. Each is learned from a spell tome sold by the new Arcanist villager (who works at an enchanting table) or found in one particular structure.",
+        "Cast with a wand, which uses spells you've learned while their tome is in your inventory, or a staff, which holds tomes in its own slots. Staffs range from the 1-slot Wooden Staff to the 25-slot Legendary Staff, found only in ancient cities. Right-click casts, sneak and scroll picks a spell, and the Open Staff key (R) opens a staff's slots.",
+        "Magic has no mana bar. Spells cost hunger, experience, reagents or diamond dust, and all have cooldowns.",
+        "One spell has no tome to find: shear an allay while it holds soul sand to learn Summon Vexes."
+      ]
+    },
+    {
+      "version": "1.0.9.10",
+      "date": "2026-09-21",
+      "title": "Added obsidian chests",
+      "changes": [
+        "New obsidian chest: 54 slots, 108 as a double, and locked to whoever placed it. Its owner gets an Access button on the chest's window to choose who else can open it and what a comparator reads. Hoppers can fill it but not empty it, and a comparator reads a pulse on each authorised opening or each refused attempt instead of its contents.",
+        "Chests with more than six rows now scroll, with a scroll bar like the creative inventory's.",
+        "Obsidian chests are in the Functional Blocks and Redstone Blocks creative tabs.",
+        "Placing two obsidian chests side by side now joins them into one 108-slot double chest, instead of leaving two separate inventories that could not be opened.",
+        "Double chests no longer show a line down the middle. Any chest that only has a single-chest texture, modded ones included, now joins seamlessly into a double."
+      ]
+    },
+    {
       "version": "1.0.9.7",
       "date": "2026-09-21",
       "title": "Permissions for every command",
@@ -10,7 +40,8 @@
         "Permission groups come from datapacks, in data/<namespace>/permission_group/. Groups can inherit from each other, apply to everyone or to an op level, and use wildcards and denials.",
         "The new /permissions command (or /perms) shows what anyone may do and why, puts players in groups, and allows or denies single commands for one player.",
         "On singleplayer and LAN worlds, /op and /deop now work, so the host can give friends commands without turning them on for everyone. The host always has every permission while commands are on.",
-        "The game window now really does show the ABNW icon."
+        "The game window now really does show the ABNW icon.",
+        "Villagers can walk through doorways with a carpet laid in them. They are a hair shorter to fit, which nobody will notice."
       ]
     },
     {
