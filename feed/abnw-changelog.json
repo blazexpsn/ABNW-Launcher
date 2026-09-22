@@ -2,6 +2,21 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.20",
+      "date": "2026-09-22",
+      "title": "Spellcraft, sandwiches and witches",
+      "changes": [
+        "Casting a spell now looks like casting a spell. Motes in the spell's school colour gather at your hand while you charge one, tighten as it builds, and burst as it goes off, with a chime that rises and a flourish at the end. A spell that breaks or that you can't pay for puffs out in smoke.",
+        "Witches cast spells. Each witch is born knowing four, drawn at random from the spells witches may know, and casts one about a third of the time instead of throwing a potion. No two witches are quite the same, and killing one tells you nothing about the next. She still heals her fellow raiders with potions rather than cursing them.",
+        "Bread cuts into 12 slices, and two slices plus anything you like make a sandwich. There's no fixed recipe: the sandwich is worth whatever you put in it, takes its name from the first two fillings, and lists the rest. Only cooked meat and food that doesn't need cooking can go in, so cook it first.",
+        "Any egg a chicken lays can be cooked into a fried egg, which makes a good sandwich filling.",
+        "Shears and soul sand now turn up in woodland mansion chests, alongside the leads and the caged allays. Whatever the evokers are doing in there, the tools for it are lying around. Doing it yourself earns a new hidden advancement.",
+        "Fixed the staff key, switching spells with sneak and scroll, and the obsidian chest's Access screen, none of which did anything: every message the game sent to the server was being dropped once you were in a world.",
+        "Fixed crops, seeds and redstone showing their block's name: potatoes read \"Potatoes\", wheat seeds read \"Wheat Crops\" and redstone dust read \"Redstone Wire\". Every item now uses its own name.",
+        "Fixed a soup recipe that could stop a world loading."
+      ]
+    },
+    {
       "version": "1.0.9.14",
       "date": "2026-09-22",
       "title": "Magic balance",
