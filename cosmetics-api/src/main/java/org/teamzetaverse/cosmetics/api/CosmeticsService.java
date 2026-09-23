@@ -60,27 +60,50 @@ public final class CosmeticsService {
     }
 
     public CosmeticRegistry fetchRegistry() throws IOException {
-        return CosmeticRegistry.parse(new String(this.get(this.baseUrl + "/v1/cosmetics/registry", MAX_JSON_BYTES), StandardCharsets.UTF_8));
+        return CosmeticRegistry.parse(this.fetchSignedRegistry().text());
     }
 
     /** Local content metadata is never proof of ownership. */
     public CosmeticRegistry cachedRegistry(final Path cache) throws IOException {
         Path file = cache.resolve("registry.json");
         if (Files.size(file) > MAX_JSON_BYTES) throw new IOException("Cached cosmetic registry is too large.");
-        return CosmeticRegistry.parse(Files.readString(file, StandardCharsets.UTF_8));
+        SignedDocument document = SignedDocument.parse(Files.readString(cache.resolve("registry.signature"), StandardCharsets.UTF_8));
+        document.verify(SignedDocument.bundledKeys());
+        byte[] local = Files.readAllBytes(file);
+        if (!MessageDigest.isEqual(local, document.payload())) throw new IOException("Cached cosmetics registry was modified.");
+        return CosmeticRegistry.parse(document.text());
     }
 
     public CosmeticRegistry synchronizeRegistry(final Path cache) throws IOException {
-        byte[] bytes = this.get(this.baseUrl + "/v1/cosmetics/registry", MAX_JSON_BYTES);
-        CosmeticRegistry registry = CosmeticRegistry.parse(new String(bytes, StandardCharsets.UTF_8));
+        SignedDocument document = this.fetchSignedRegistry();
+        document.verify(SignedDocument.bundledKeys());
+        byte[] bytes = document.payload();
+        CosmeticRegistry registry = CosmeticRegistry.parse(document.text());
         Files.createDirectories(cache);
         Path temp = Files.createTempFile(cache, "registry-", ".part");
+        Path signature = Files.createTempFile(cache, "registry-signature-", ".part");
         try {
             Files.write(temp, bytes);
+            Files.writeString(signature, signedJson(document), StandardCharsets.UTF_8);
             try { Files.move(temp, cache.resolve("registry.json"), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(temp, cache.resolve("registry.json"), StandardCopyOption.REPLACE_EXISTING); }
-        } finally { Files.deleteIfExists(temp); }
+            try { Files.move(signature, cache.resolve("registry.signature"), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+            catch (AtomicMoveNotSupportedException e) { Files.move(signature, cache.resolve("registry.signature"), StandardCopyOption.REPLACE_EXISTING); }
+        } finally {
+            Files.deleteIfExists(temp);
+            Files.deleteIfExists(signature);
+        }
         return registry;
+    }
+
+    private SignedDocument fetchSignedRegistry() throws IOException {
+        return SignedDocument.parse(new String(this.get(this.baseUrl + "/v1/cosmetics/registry-signed", MAX_JSON_BYTES * 2), StandardCharsets.UTF_8));
+    }
+
+    private static String signedJson(final SignedDocument document) {
+        return "{\"formatVersion\":1,\"keyId\":\"" + document.keyId() + "\",\"payload\":\""
+            + Base64.getEncoder().encodeToString(document.payload()) + "\",\"signature\":\""
+            + Base64.getEncoder().encodeToString(document.signature()) + "\"}\n";
     }
 
     public java.util.Optional<Path> cachedAsset(final CosmeticAsset asset, final Path cache) throws IOException {

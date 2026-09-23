@@ -40,12 +40,18 @@ final class CosmeticsPage {
     private String linkUrl;
     private Progress unlinking;
     private Progress purchasing;
+    private long lastDrawMillis;
 
     CosmeticsPage(final LauncherUi ui) {
         this.ui = ui;
     }
 
     void draw() {
+        long now = System.currentTimeMillis();
+        if (now - this.lastDrawMillis > 1500L) {
+            this.ui.wardrobe.refreshFromServer();
+        }
+        this.lastDrawMillis = now;
         float full = ImGui.getContentRegionAvailX();
         float width = Math.min(full, px(880));
         ImGui.setCursorPosX(ImGui.getCursorPosX() + (full - width) * 0.5f);

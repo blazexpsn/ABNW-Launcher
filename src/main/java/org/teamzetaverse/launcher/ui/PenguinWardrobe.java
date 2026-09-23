@@ -109,6 +109,11 @@ final class PenguinWardrobe {
         return this.storeLoading;
     }
 
+    /** Request a fresh signed registry the next time the cosmetics page is opened. */
+    void refreshFromServer() {
+        this.storeAttempt = 0;
+    }
+
     boolean owns(final Accessory accessory) {
         return accessory.free() || this.ui.unlockedCosmetics().contains(accessory.id());
     }
