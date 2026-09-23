@@ -349,7 +349,7 @@ final class InstancesPage {
                     ImGui.sameLine(0, gap);
                 }
                 boolean owned = wardrobe.owns(item);
-                String tip = owned ? item.name() : item.name() + " (" + item.price() + " in the Cosmetics store)";
+                String tip = owned ? item.name() : item.name() + " (" + item.price() + " including tax in the Cosmetics store)";
                 if (this.swatch(slot + "-" + item.id(), List.of(item.texture()), item.id().equals(chosen), !owned, tip, swatch)) {
                     if (owned) {
                         wardrobe.wear(instance, slot, item.id());

@@ -190,9 +190,11 @@ final class CosmeticsPage {
                 Widgets.mascotMessage(Icons.Icon.SOON, wardrobe.storeLoading() ? "Opening the wardrobe…"
                     : "More accessories are on their way to the store.", Theme.MUTED);
             } else {
+                Widgets.textWrapped(Fonts.small, Theme.MUTED, "Prices include tax. Checkout shows the tax breakdown and final amount in your chosen currency.");
+                ImGui.dummy(0, px(8));
                 float gap = px(12);
-                int columns = width >= px(640) ? 3 : 2;
                 float inner = ImGui.getContentRegionAvailX();
+                int columns = Math.max(1, (int)((inner + gap) / (px(340) + gap)));
                 float cardWidth = (inner - gap * (columns - 1)) / columns;
                 for (int i = 0; i < items.size(); i++) {
                     if (i % columns != 0) {
@@ -206,7 +208,7 @@ final class CosmeticsPage {
     }
 
     private void storeItem(final PenguinWardrobe.Accessory item, final float width, final String account) {
-        float h = px(132);
+        float h = px(156);
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
         ImDrawList dl = ImGui.getWindowDrawList();
@@ -223,7 +225,7 @@ final class CosmeticsPage {
         ImGui.beginGroup();
         Widgets.text(Fonts.label, Theme.TEXT, Widgets.ellipsize(Fonts.label, item.name(), tw));
         Widgets.drawTextWrapped(dl, Fonts.small, tx, ImGui.getCursorScreenPosY(), u32(Theme.FAINT), item.description(), tw);
-        ImGui.setCursorScreenPos(tx, y + h - px(50));
+        ImGui.setCursorScreenPos(tx, y + h - px(70));
         boolean owned = this.ui.wardrobe.owns(item);
         if (owned) {
             Widgets.pill("Owned", Theme.OK, Theme.OK, 0.13f, Icons.Icon.CHECK);
@@ -232,6 +234,7 @@ final class CosmeticsPage {
             if (Widgets.primary("buy-" + item.id(), busy ? "Waiting…" : "Buy " + item.price(), Icons.Icon.HEART, 0, px(38), !busy)) {
                 this.startPurchase(account, item);
             }
+            Widgets.drawText(dl, Fonts.small, tx, y + h - px(26), u32(Theme.MUTED), "Including tax");
         }
         ImGui.endGroup();
         ImGui.setCursorScreenPos(x, y);
