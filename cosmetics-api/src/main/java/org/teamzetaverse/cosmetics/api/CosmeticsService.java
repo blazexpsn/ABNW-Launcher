@@ -63,6 +63,32 @@ public final class CosmeticsService {
         return CosmeticRegistry.parse(new String(this.get(this.baseUrl + "/v1/cosmetics/registry", MAX_JSON_BYTES), StandardCharsets.UTF_8));
     }
 
+    /** Local content metadata is never proof of ownership. */
+    public CosmeticRegistry cachedRegistry(final Path cache) throws IOException {
+        Path file = cache.resolve("registry.json");
+        if (Files.size(file) > MAX_JSON_BYTES) throw new IOException("Cached cosmetic registry is too large.");
+        return CosmeticRegistry.parse(Files.readString(file, StandardCharsets.UTF_8));
+    }
+
+    public CosmeticRegistry synchronizeRegistry(final Path cache) throws IOException {
+        byte[] bytes = this.get(this.baseUrl + "/v1/cosmetics/registry", MAX_JSON_BYTES);
+        CosmeticRegistry registry = CosmeticRegistry.parse(new String(bytes, StandardCharsets.UTF_8));
+        Files.createDirectories(cache);
+        Path temp = Files.createTempFile(cache, "registry-", ".part");
+        try {
+            Files.write(temp, bytes);
+            try { Files.move(temp, cache.resolve("registry.json"), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+            catch (AtomicMoveNotSupportedException e) { Files.move(temp, cache.resolve("registry.json"), StandardCopyOption.REPLACE_EXISTING); }
+        } finally { Files.deleteIfExists(temp); }
+        return registry;
+    }
+
+    public java.util.Optional<Path> cachedAsset(final CosmeticAsset asset, final Path cache) throws IOException {
+        Path target = cache.resolve(asset.sha256().substring(0, 2)).resolve(asset.sha256() + "." + asset.extension());
+        return Files.isRegularFile(target) && Files.size(target) == asset.size() && sha256(target).equals(asset.sha256())
+            ? java.util.Optional.of(target) : java.util.Optional.empty();
+    }
+
     public CosmeticProfile fetchProfile(final String uuid) throws IOException {
         String compact = uuid.replace("-", "").toLowerCase(java.util.Locale.ROOT);
         if (!UUID.matcher(compact).matches()) {
@@ -93,7 +119,7 @@ public final class CosmeticsService {
             return target;
         }
         Files.createDirectories(target.getParent());
-        Path temp = target.resolveSibling(target.getFileName() + ".part");
+        Path temp = Files.createTempFile(target.getParent(), asset.sha256() + "-", ".part");
         try {
             HttpResponse<InputStream> response = this.send(this.assetUrl(cosmetic, asset));
             MessageDigest digest = digest();

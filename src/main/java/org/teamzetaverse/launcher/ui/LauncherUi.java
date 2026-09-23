@@ -76,7 +76,7 @@ public final class LauncherUi {
     final DiscordPresence discord;
     final List<String> errors = new ArrayList<>();
     final Dialogs dialogs;
-    final org.teamzetaverse.launcher.cosmetics.CosmeticsClient cosmetics = new org.teamzetaverse.launcher.cosmetics.CosmeticsClient();
+    final org.teamzetaverse.launcher.cosmetics.CosmeticsClient cosmetics;
 
     private final FeedService feedService;
     private final UpdateChecker updateChecker;
@@ -108,6 +108,7 @@ public final class LauncherUi {
         this.paths = paths;
         this.config = config;
         this.accounts = new AccountStore(paths);
+        this.cosmetics = new org.teamzetaverse.launcher.cosmetics.CosmeticsClient(paths);
         this.instances = new InstanceStore(paths);
         this.installer = new GameInstaller(paths, config);
         this.gameLauncher = new GameLauncher(paths, config);
@@ -612,7 +613,15 @@ public final class LauncherUi {
     }
 
     void loadCosmetics() {
-        this.currentAccount().filter(account -> !account.devOffline).ifPresent(this.cosmeticsPage::load);
+        this.cosmeticsPage.load();
+    }
+
+    void initializeCosmetics(final Account account) {
+        this.tasks.submit("Setting up ABNW cosmetics", progress -> {
+            this.cosmetics.initialize(account);
+            this.accounts.save();
+            return Boolean.TRUE;
+        }, ok -> this.loadCosmetics(), this::fail);
     }
 
     MicrosoftAuth auth() {
@@ -628,7 +637,7 @@ public final class LauncherUi {
         Account account = maybeAccount.get();
         if (account.devOffline && !this.accounts.hasAuthenticatedAccount()) {
             this.fail(new MicrosoftAuth.AuthException(
-                "An offline account needs a currently signed-in Microsoft account. Sign in, or launch your Microsoft account once to refresh its session."));
+                "An offline account needs a previously saved Microsoft account. Sign in to the launcher once."));
             return;
         }
         this.select(instance);
@@ -725,6 +734,7 @@ public final class LauncherUi {
         this.tasks.submit("Connecting to Microsoft", progress -> auth.requestDeviceCode(), code -> {
             Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), account -> {
                 this.accounts.put(account);
+                this.initializeCosmetics(account);
                 this.config.selectedAccount = account.uuid;
                 this.config.save();
                 this.dialogs.signInFinished();

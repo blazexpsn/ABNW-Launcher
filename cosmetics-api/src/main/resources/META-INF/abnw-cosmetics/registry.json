@@ -1,4 +1,105 @@
 {
   "formatVersion": 1,
-  "cosmetics": []
+  "cosmetics": [
+    {
+      "id": "abnw:penguin_crown",
+      "name": "Crown",
+      "description": "A gold crown for the penguin that runs the place.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "stripePriceId": "price_SETME",
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/crown.png",
+          "sha256": "e3937519be47a17ebbb3d0e17a04ff438a7bb7b0f83ea84d7b213a3284b84ac1",
+          "size": 154
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_dwarthen_helm",
+      "name": "Dwarthen helm",
+      "description": "Iron and horn, as worn in the halls beneath the deepslate.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "stripePriceId": "price_SETME",
+          "priceCents": 299,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/dwarthen_helm.png",
+          "sha256": "383f39433baf8a54745f2011e4a9a5c543e531d4a270e727d897559b942d071d",
+          "size": 204
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_heart_glasses",
+      "name": "Heart glasses",
+      "description": "Seeing the world through them.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "stripePriceId": "price_SETME",
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/heart_glasses.png",
+          "sha256": "3a8fe4c247ff8e7a92e20743d945801b7db6ba8faeaa5d37c49d2a294b9f334f",
+          "size": 162
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_3d_glasses",
+      "name": "3D glasses",
+      "description": "Red on the left, cyan on the right.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "stripePriceId": "price_SETME",
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/3d_glasses.png",
+          "sha256": "e080efcd9090eddcf8a0253d449a4a4d5daba03dab8ee325456d5912189c90c1",
+          "size": 156
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_gold_chain",
+      "name": "Gold chain",
+      "description": "Heavy. Shiny. Unnecessary.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "stripePriceId": "price_SETME",
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/gold_chain.png",
+          "sha256": "ec0dc41504adc89c48138e77d79f18ed755a2a00140ccc501012308512eb4605",
+          "size": 133
+        }
+      }
+    }
+  ]
 }

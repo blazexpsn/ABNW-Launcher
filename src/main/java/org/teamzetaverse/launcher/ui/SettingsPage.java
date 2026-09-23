@@ -197,8 +197,8 @@ final class SettingsPage {
                 boolean canAddOffline = this.ui.accounts.hasAuthenticatedAccount();
                 this.row("Offline accounts",
                     canAddOffline
-                        ? "Launches without signing in each time. Online servers and cosmetics won't accept it."
-                        : "Sign in with a Microsoft account first (and keep its session current) — offline accounts need a live authenticated session.", () -> {
+                        ? "Launches offline. Select a saved ABNW identity in Cosmetics to use synchronized cosmetics."
+                        : "Sign in with a Microsoft account once before adding an offline profile.", () -> {
                     Widgets.beginField();
                     ImGui.setNextItemWidth(this.controlWidth() - px(88));
                     ImGui.inputTextWithHint("##set-dev-name", "Player name", this.devName);

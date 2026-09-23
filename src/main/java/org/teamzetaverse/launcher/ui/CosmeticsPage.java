@@ -15,7 +15,6 @@ import org.teamzetaverse.cosmetics.api.CosmeticRegistry;
 import org.teamzetaverse.cosmetics.api.InvalidRegistryException;
 import org.teamzetaverse.launcher.BuildInfo;
 import org.teamzetaverse.launcher.auth.Account;
-import org.teamzetaverse.launcher.auth.MicrosoftAuth;
 import org.teamzetaverse.launcher.cosmetics.CosmeticsClient;
 import org.teamzetaverse.launcher.task.Progress;
 
@@ -36,6 +35,7 @@ final class CosmeticsPage {
     private CosmeticsClient.Status status;
     private String error;
     private boolean loading;
+    private long nextSync;
     private Progress linking;
     private String linkUrl;
     private Progress unlinking;
@@ -53,35 +53,35 @@ final class CosmeticsPage {
         Widgets.pageHeader("Cosmetics", "Look the part. Cosmetics are purely visual and never change gameplay.");
         this.forgetFinishedTasks();
 
-        Optional<Account> account = this.ui.currentAccount();
-        if (!BuildInfo.cosmeticsConfigured()) {
-            this.hero("cos-soon", width, "COSMETICS", "Cosmetics coming soon",
-                "Supporter cosmetics and the cosmetics store aren't open yet. Keep an eye on the News page.", Icons.Icon.SOON, null);
-        } else if (account.isEmpty()) {
-            this.hero("cos-signin", width, "ABNW SUPPORTERS", "Sign in to link Patreon",
-                "Sign in with your Microsoft account first, then link your Patreon to unlock supporter cosmetics.", Icons.Icon.PENGUIN_KEY, () -> {
-                    if (Widgets.primary("cos-signin-button", "Sign in with Microsoft", Icons.Icon.USER, 0, px(48), true)) {
-                        this.ui.startSignIn();
+        var identities = this.ui.cosmetics.identities();
+        Widgets.textWrapped(Fonts.body, Theme.MUTED, "Your ABNW cosmetic identity works with any Minecraft profile, including offline profiles.");
+        for (var identity : identities.all()) {
+            if (Widgets.secondary("identity-" + identity.id(), identity.label() + " · " + identity.id().substring(5, 13),
+                Icons.Icon.USER, !identity.id().equals(identities.selected()))) {
+                try { identities.select(identity.id()); } catch (IOException e) { this.error = message(e); }
+            }
+        }
+        String id = identities.selected();
+        if (id.isEmpty()) {
+            Optional<Account> account = this.ui.currentAccount().filter(a0 -> !a0.devOffline);
+            this.hero("cos-setup", width, "ABNW IDENTITY", "Set up your cosmetics",
+                "Create a cosmetic identity once. Your saved cosmetics will then work online and offline.", Icons.Icon.PENGUIN_KEY, () -> {
+                    if (Widgets.primary("cos-setup-button", account.isPresent() ? "Set up cosmetics" : "Sign in to the launcher", Icons.Icon.USER, 0, px(48), true)) {
+                        if (account.isPresent()) this.ui.initializeCosmetics(account.get()); else this.ui.startSignIn();
                     }
                 });
         } else {
-            this.ensureLoaded(account.get());
-            if (this.status == null) {
-                this.drawLoadingOrError(width, account.get());
-            } else if (!this.status.patreon().linked()) {
-                this.drawLink(width, account.get());
-            } else {
-                this.drawLinked(width, account.get());
-            }
-            if (this.status != null) {
-                ImGui.dummy(0, px(8));
-                this.drawWardrobe(width, account.get());
-            }
+            this.ensureLoaded(id);
+            if (this.status == null) this.drawLoadingOrError(width, id);
+            else if (!this.status.patreon().linked()) this.drawLink(width, id);
+            else this.drawLinked(width, id);
+            ImGui.dummy(0, px(8));
+            this.drawWardrobe(width, id);
         }
         ImGui.endGroup();
     }
 
-    private void drawLoadingOrError(final float width, final Account account) {
+    private void drawLoadingOrError(final float width, final String account) {
         if (this.error != null && !this.loading) {
             this.hero("cos-error", width, "COSMETICS", "Couldn't reach cosmetics", this.error, Icons.Icon.PENGUIN_ALERT, () -> {
                 if (Widgets.secondary("cos-retry", "Try again", Icons.Icon.REFRESH)) {
@@ -90,12 +90,12 @@ final class CosmeticsPage {
             });
             return;
         }
-        this.hero("cos-loading", width, "COSMETICS", "Checking your cosmetics…", "Confirming " + account.name + " with Minecraft. This only takes a moment.",
+        this.hero("cos-loading", width, "COSMETICS", "Checking your cosmetics…", "Loading your saved ABNW entitlements and checking for updates.",
             Icons.Icon.PENGUIN_CLOCK, null);
         Motion.keepAlive();
     }
 
-    private void drawLink(final float width, final Account account) {
+    private void drawLink(final float width, final String account) {
         String body = "Members of the official ABNW Patreon unlock supporter cosmetics. They're purely visual, never affect gameplay, "
             + "and stay unlocked for as long as you support.";
         this.hero("cos-link", width, "ABNW SUPPORTERS", "Link your Patreon", body, Icons.Icon.PENGUIN_SUPPORTER, () -> {
@@ -125,7 +125,7 @@ final class CosmeticsPage {
         this.drawError();
     }
 
-    private void drawLinked(final float width, final Account account) {
+    private void drawLinked(final float width, final String account) {
         CosmeticsClient.Patreon patreon = this.status.patreon();
         String body = patreon.active()
             ? "Thank you for supporting ABNW! Supporter cosmetics are being made right now and will unlock for you automatically. "
@@ -147,7 +147,7 @@ final class CosmeticsPage {
                 Widgets.pill("Not an active patron", Theme.MUTED, 0xFFFFFF, 0.06f, null);
             }
             ImGui.dummy(0, px(4));
-            String who = patreon.fullName().isEmpty() ? "" : "Patreon account " + patreon.fullName() + " is linked to " + account.name + ".";
+            String who = patreon.fullName().isEmpty() ? "" : "Patreon account " + patreon.fullName() + " is linked to " + "your ABNW identity" + ".";
             if ("token_revoked".equals(patreon.status())) {
                 who = "ABNW can no longer see this Patreon account. Unlink it and link it again.";
             }
@@ -172,7 +172,7 @@ final class CosmeticsPage {
         this.drawError();
     }
 
-    private void drawWardrobe(final float width, final Account account) {
+    private void drawWardrobe(final float width, final String account) {
         PenguinWardrobe wardrobe = this.ui.wardrobe;
         if (Widgets.beginCard("cos-wardrobe", width, 0, Theme.SURFACE, px(26), px(22))) {
             Widgets.cardTitle(Icons.Icon.COSMETICS, "Penguin wardrobe");
@@ -199,7 +199,7 @@ final class CosmeticsPage {
         Widgets.endCard();
     }
 
-    private void storeItem(final PenguinWardrobe.Accessory item, final float width, final Account account) {
+    private void storeItem(final PenguinWardrobe.Accessory item, final float width, final String account) {
         float h = px(132);
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
@@ -232,7 +232,7 @@ final class CosmeticsPage {
         ImGui.dummy(width, h);
     }
 
-    private void startPurchase(final Account account, final PenguinWardrobe.Accessory item) {
+    private void startPurchase(final String account, final PenguinWardrobe.Accessory item) {
         this.error = null;
         this.purchasing = this.ui.tasks.submit("Buying " + item.name(), progress -> {
             progress.status("Opening checkout…");
@@ -252,18 +252,19 @@ final class CosmeticsPage {
             }
             throw new IOException("Checkout timed out. If you paid, " + item.name() + " will appear the next time the launcher checks.");
         }, bought -> {
-            if (account.uuid.equals(this.loadedFor)) {
+            if (account.equals(this.loadedFor)) {
                 this.status = bought;
             }
         }, failure -> this.error = message(failure));
     }
 
     java.util.Set<String> unlocked() {
-        return this.status == null ? java.util.Set.of() : java.util.Set.copyOf(this.status.unlocked());
+        return this.ui.cosmetics.unlocked();
     }
 
-    void load(final Account account) {
-        this.ensureLoaded(account);
+    void load() {
+        String id = this.ui.cosmetics.identities().selected();
+        if (!id.isEmpty()) this.ensureLoaded(id);
     }
 
     private void drawError() {
@@ -330,36 +331,42 @@ final class CosmeticsPage {
         }
     }
 
-    private void ensureLoaded(final Account account) {
-        if (!account.uuid.equals(this.loadedFor)) {
+    private void ensureLoaded(final String account) {
+        if (!account.equals(this.loadedFor)) {
+            this.loadedFor = account;
             this.status = null;
             this.error = null;
-            this.reload(account);
+            this.loading = false;
+            this.nextSync = 0;
+            try { this.status = this.ui.cosmetics.cachedStatus(account); }
+            catch (IOException e) { this.error = message(e); }
         }
+        if (!this.loading && System.currentTimeMillis() >= this.nextSync) this.reload(account);
     }
 
-    private void reload(final Account account) {
+    private void reload(final String account) {
         if (this.loading) {
             return;
         }
         this.loading = true;
-        this.loadedFor = account.uuid;
+        this.nextSync = System.currentTimeMillis() + 60000;
+        this.loadedFor = account;
         this.error = null;
         Progress progress = new Progress("Cosmetics");
         this.loader.execute(() -> {
             try {
                 CosmeticsClient.Status loaded = this.withSession(account, progress, token -> this.ui.cosmetics.status(token));
                 this.ui.tasks.onUi(() -> {
-                    this.loading = false;
-                    if (account.uuid.equals(this.loadedFor)) {
+                    if (account.equals(this.loadedFor)) {
+                        this.loading = false;
                         this.status = loaded;
                     }
                 });
             } catch (Exception e) {
                 String message = message(e);
                 this.ui.tasks.onUi(() -> {
-                    this.loading = false;
-                    if (account.uuid.equals(this.loadedFor)) {
+                    if (account.equals(this.loadedFor)) {
+                        this.loading = false;
                         this.error = message;
                     }
                 });
@@ -367,7 +374,7 @@ final class CosmeticsPage {
         });
     }
 
-    private void startLink(final Account account) {
+    private void startLink(final String account) {
         this.error = null;
         this.linking = this.ui.tasks.submit("Linking Patreon", progress -> {
             progress.status("Opening Patreon…");
@@ -389,42 +396,27 @@ final class CosmeticsPage {
             }
             throw new IOException("Patreon linking timed out. Choose Link Patreon to try again.");
         }, linked -> {
-            if (account.uuid.equals(this.loadedFor)) {
+            if (account.equals(this.loadedFor)) {
                 this.status = linked;
             }
         }, failure -> this.error = message(failure));
     }
 
-    private void startUnlink(final Account account) {
+    private void startUnlink(final String account) {
         this.error = null;
         this.unlinking = this.ui.tasks.submit("Unlinking Patreon", progress -> this.withSession(account, progress, token -> {
             this.ui.cosmetics.unlinkPatreon(token);
             return this.ui.cosmetics.status(token);
         }), unlinked -> {
-            if (account.uuid.equals(this.loadedFor)) {
+            if (account.equals(this.loadedFor)) {
                 this.status = unlinked;
             }
         }, failure -> this.error = message(failure));
     }
 
-    private <T> T withSession(final Account account, final Progress progress, final Call<T> call) throws Exception {
-        if (account.devOffline) {
-            throw new MicrosoftAuth.AuthException("Offline accounts can't use cosmetics. Sign in with Microsoft.");
-        }
-        String token = account.cosmeticsToken;
-        if (token != null && !token.isEmpty()) {
-            try {
-                return call.run(token);
-            } catch (CosmeticsClient.UnauthorizedException expired) {
-                account.cosmeticsToken = "";
-            }
-        }
-        progress.status("Confirming " + account.name + " with Minecraft…");
-        this.ui.auth().refresh(account, progress);
-        String issued = this.ui.cosmetics.signIn(account);
-        account.cosmeticsToken = issued;
-        this.ui.accounts.save();
-        return call.run(issued);
+    private <T> T withSession(final String account, final Progress progress, final Call<T> call) throws Exception {
+        progress.checkCancelled();
+        return call.run(account);
     }
 
     private static String unlockedNames(final CosmeticsClient.Status status) {

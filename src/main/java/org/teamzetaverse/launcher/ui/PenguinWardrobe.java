@@ -64,6 +64,8 @@ final class PenguinWardrobe {
     private volatile List<Accessory> store = List.of();
     private volatile boolean storeLoading;
     private volatile long storeAttempt;
+    private String equippedFor = "";
+    private com.google.gson.JsonObject equipped = new com.google.gson.JsonObject();
 
     PenguinWardrobe(final LauncherUi ui) {
         this.ui = ui;
@@ -121,7 +123,10 @@ final class PenguinWardrobe {
     }
 
     String chosenId(final Instance instance, final String slot) {
-        String chosen = instance.penguin == null ? null : instance.penguin.get(slot);
+        String id = this.ui.cosmetics.identities().selected();
+        this.loadEquipped(id);
+        String chosen = id.isEmpty() ? (instance.penguin == null ? null : instance.penguin.get(slot))
+            : org.teamzetaverse.launcher.util.Json.string(org.teamzetaverse.launcher.util.Json.object(this.equipped, instance.id), slot);
         return chosen == null ? defaultFor(slot) : chosen;
     }
 
@@ -134,11 +139,28 @@ final class PenguinWardrobe {
     }
 
     void wear(final Instance instance, final String slot, final String id) {
-        if (id.equals(defaultFor(slot))) {
-            instance.penguin.remove(slot);
-        } else {
-            instance.penguin.put(slot, id);
-        }
+        if (!NONE.equals(id) && this.find(slot, id).filter(this::owns).isEmpty()) return;
+        String identity = this.ui.cosmetics.identities().selected();
+        this.loadEquipped(identity);
+        if (identity.isEmpty()) { instance.penguin.put(slot, id); return; }
+        var choices = org.teamzetaverse.launcher.util.Json.object(this.equipped, instance.id);
+        if (choices == null) { choices = new com.google.gson.JsonObject(); this.equipped.add(instance.id, choices); }
+        choices.addProperty(slot, id);
+        try { org.teamzetaverse.launcher.util.Json.writeString(this.ui.cosmetics.identityDirectory(identity).resolve("equipped.json"), this.equipped.toString()); }
+        catch (java.io.IOException e) { this.ui.fail(new java.io.IOException("Could not save equipped cosmetics.")); }
+    }
+
+    private void loadEquipped(String id) {
+        if (id.equals(this.equippedFor)) return;
+        this.equippedFor = id;
+        this.equipped = new com.google.gson.JsonObject();
+        if (id.isEmpty()) return;
+        Path file = this.ui.cosmetics.identityDirectory(id).resolve("equipped.json");
+        try {
+            if (Files.isRegularFile(file) && Files.size(file) <= 1024 * 1024) {
+                this.equipped = org.teamzetaverse.launcher.util.Json.parseObject(Files.readString(file));
+            }
+        } catch (java.io.IOException | RuntimeException e) { this.ui.fail(new java.io.IOException("Could not load equipped cosmetics.")); }
     }
 
     List<String> look(final Instance instance) {
@@ -198,7 +220,7 @@ final class PenguinWardrobe {
     }
 
     private void ensureStore() {
-        if (!BuildInfo.cosmeticsConfigured() || this.storeLoading || !this.store.isEmpty()
+        if (!BuildInfo.cosmeticsConfigured() || this.storeLoading
             || System.currentTimeMillis() - this.storeAttempt < RETRY_MILLIS) {
             return;
         }
@@ -208,24 +230,9 @@ final class PenguinWardrobe {
         Thread thread = new Thread(() -> {
             try {
                 CosmeticsService service = new CosmeticsService(BuildInfo.COSMETICS_API_URL, "ABNWLauncher/" + BuildInfo.VERSION);
-                CosmeticRegistry registry = service.fetchRegistry();
-                List<Accessory> loaded = new ArrayList<>();
-                for (Cosmetic cosmetic : registry.all()) {
-                    if (!cosmetic.type().isPenguinAccessory()) {
-                        continue;
-                    }
-                    Optional<CosmeticAsset> texture = cosmetic.asset("texture");
-                    if (texture.isEmpty()) {
-                        continue;
-                    }
-                    Path file = service.download(cosmetic, texture.get(), cache);
-                    if (!Files.isRegularFile(file)) {
-                        continue;
-                    }
-                    String slot = cosmetic.type().id().substring("penguin_".length());
-                    loaded.add(new Accessory(slot, cosmetic.id(), cosmetic.name(), cosmetic.description(), cosmetic, "file:" + file.toAbsolutePath()));
-                }
-                this.store = List.copyOf(loaded);
+                try { this.loadAssets(service, service.cachedRegistry(cache), cache, false); }
+                catch (java.io.IOException | RuntimeException ignored) { /* First synchronization has no cached registry. */ }
+                this.loadAssets(service, service.synchronizeRegistry(cache), cache, true);
             } catch (Exception e) {
                 System.err.println("Could not load the penguin wardrobe: " + e.getMessage());
             } finally {
@@ -235,4 +242,24 @@ final class PenguinWardrobe {
         thread.setDaemon(true);
         thread.start();
     }
+    private void loadAssets(CosmeticsService service, CosmeticRegistry registry, Path cache, boolean online) {
+        java.util.Map<String, Accessory> loaded = new java.util.LinkedHashMap<>();
+        // Retain usable assets if a partial synchronization fails.
+        for (Accessory item : this.store) loaded.put(item.id(), item);
+        for (Cosmetic cosmetic : registry.all()) {
+            try {
+                if (online) for (CosmeticAsset asset : cosmetic.assets().values()) service.download(cosmetic, asset, cache);
+                if (!cosmetic.type().isPenguinAccessory()) continue;
+                Optional<CosmeticAsset> texture = cosmetic.asset("texture");
+                if (texture.isEmpty()) continue;
+                Optional<Path> file = service.cachedAsset(texture.get(), cache);
+                if (file.isEmpty()) continue;
+                String slot = cosmetic.type().id().substring("penguin_".length());
+                loaded.put(cosmetic.id(), new Accessory(slot, cosmetic.id(), cosmetic.name(), cosmetic.description(), cosmetic,
+                    "file:" + file.get().toAbsolutePath()));
+            } catch (java.io.IOException e) { /* Missing assets fall back; never discard valid ownership. */ }
+        }
+        this.store = List.copyOf(loaded.values());
+    }
+
 }

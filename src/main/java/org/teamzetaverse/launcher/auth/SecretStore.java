@@ -31,10 +31,14 @@ abstract class SecretStore {
     abstract String describe();
 
     static SecretStore platform(final Path protectedFile) {
+        return platform(protectedFile, ACCOUNT);
+    }
+
+    static SecretStore platform(final Path protectedFile, final String account) {
         return switch (OperatingSystem.CURRENT) {
             case WINDOWS -> new WindowsDataProtection(protectedFile);
-            case MACOS -> new MacKeychain();
-            case LINUX -> new LinuxSecretService();
+            case MACOS -> new MacKeychain(account);
+            case LINUX -> new LinuxSecretService(account);
         };
     }
 
@@ -132,9 +136,11 @@ abstract class SecretStore {
     }
 
     private static final class MacKeychain extends SecretStore {
+        private final String account;
+        private MacKeychain(String account) { this.account = account; }
         @Override
         String load() throws IOException {
-            Result result = run(List.of("security", "find-generic-password", "-a", ACCOUNT, "-s", SERVICE, "-w"), null);
+            Result result = run(List.of("security", "find-generic-password", "-a", this.account, "-s", SERVICE, "-w"), null);
             if (result.exitCode() == 44) {
                 return null;
             }
@@ -146,7 +152,7 @@ abstract class SecretStore {
 
         @Override
         void save(final String secret) throws IOException {
-            String command = "add-generic-password -U -a " + ACCOUNT + " -s " + SERVICE + " -l \"ABNW Launcher accounts\" -w " + encode(secret) + "\n";
+            String command = "add-generic-password -U -a " + this.account + " -s " + SERVICE + " -l \"ABNW Launcher accounts\" -w " + encode(secret) + "\n";
             Result result = run(List.of("security", "-i"), command);
             if (result.exitCode() != 0) {
                 throw new IOException("the macOS keychain is unavailable");
@@ -160,9 +166,11 @@ abstract class SecretStore {
     }
 
     private static final class LinuxSecretService extends SecretStore {
+        private final String account;
+        private LinuxSecretService(String account) { this.account = account; }
         @Override
         String load() throws IOException {
-            Result result = run(List.of("secret-tool", "lookup", "service", SERVICE, "account", ACCOUNT), null);
+            Result result = run(List.of("secret-tool", "lookup", "service", SERVICE, "account", this.account), null);
             if (result.exitCode() != 0 || result.stdout().isBlank()) {
                 return null;
             }
@@ -171,7 +179,7 @@ abstract class SecretStore {
 
         @Override
         void save(final String secret) throws IOException {
-            Result result = run(List.of("secret-tool", "store", "--label=ABNW Launcher accounts", "service", SERVICE, "account", ACCOUNT), encode(secret));
+            Result result = run(List.of("secret-tool", "store", "--label=ABNW Launcher accounts", "service", SERVICE, "account", this.account), encode(secret));
             if (result.exitCode() != 0) {
                 throw new IOException("the Secret Service keyring is unavailable");
             }

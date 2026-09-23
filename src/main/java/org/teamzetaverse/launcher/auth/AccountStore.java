@@ -110,15 +110,9 @@ public final class AccountStore {
         return this.accounts;
     }
 
-    /**
-     * True once at least one account holds a currently valid Minecraft session token — i.e. it has
-     * signed in (or silently refreshed) within the last {@link Account#hasValidMinecraftToken() token
-     * lifetime}, not just that it's linked. Offline accounts are gated on this: they can only be
-     * created, and only allowed to launch, while the launcher holds live proof of a Mojang-authenticated
-     * account. A stale/expired token doesn't count, even if the account is still saved.
-     */
+    /** Offline profiles require a saved authenticated account, never a live Minecraft session. */
     public boolean hasAuthenticatedAccount() {
-        return this.accounts.stream().anyMatch(account -> !account.devOffline && account.hasValidMinecraftToken());
+        return this.accounts.stream().anyMatch(account -> !account.devOffline && account.msaRefreshToken != null && !account.msaRefreshToken.isBlank());
     }
 
     public Optional<Account> find(final String uuid) {
@@ -126,6 +120,9 @@ public final class AccountStore {
     }
 
     public void put(final Account account) {
+        this.find(account.uuid).ifPresent(previous -> {
+            if (account.cosmeticsToken == null || account.cosmeticsToken.isBlank()) account.cosmeticsToken = previous.cosmeticsToken;
+        });
         this.accounts.removeIf(a -> a.uuid.equals(account.uuid));
         this.accounts.add(account);
         this.save();
