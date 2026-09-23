@@ -8,7 +8,6 @@
       "type": "penguin_head",
       "unlock": {
         "purchase": {
-          "stripePriceId": "price_SETME",
           "priceCents": 199,
           "currency": "gbp"
         }
@@ -28,7 +27,6 @@
       "type": "penguin_head",
       "unlock": {
         "purchase": {
-          "stripePriceId": "price_SETME",
           "priceCents": 299,
           "currency": "gbp"
         }
@@ -48,7 +46,6 @@
       "type": "penguin_face",
       "unlock": {
         "purchase": {
-          "stripePriceId": "price_SETME",
           "priceCents": 149,
           "currency": "gbp"
         }
@@ -68,7 +65,6 @@
       "type": "penguin_face",
       "unlock": {
         "purchase": {
-          "stripePriceId": "price_SETME",
           "priceCents": 149,
           "currency": "gbp"
         }
@@ -88,7 +84,6 @@
       "type": "penguin_neck",
       "unlock": {
         "purchase": {
-          "stripePriceId": "price_SETME",
           "priceCents": 199,
           "currency": "gbp"
         }

@@ -27,7 +27,6 @@ public final class CosmeticRegistry {
     private static final Pattern ASSET_PATH = Pattern.compile("^[a-z0-9_-]{1,64}(/[a-z0-9_-]{1,64}){0,6}\\.(png|json|ogg)$");
     private static final Pattern SHA256 = Pattern.compile("^[0-9a-f]{64}$");
     private static final Pattern PARTICLE_ID = Pattern.compile("^[a-z0-9_.-]{1,32}:[a-z0-9_/.-]{1,64}$");
-    private static final Pattern STRIPE_PRICE = Pattern.compile("^price_[A-Za-z0-9]{1,64}$");
     private static final Pattern CURRENCY = Pattern.compile("^[a-z]{3}$");
     private static final Pattern COLOR = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
@@ -138,10 +137,6 @@ public final class CosmeticRegistry {
             throw new InvalidRegistryException(id + " has a negative patreonMinCents.");
         }
         Optional<CosmeticUnlock.Purchase> purchase = object(object, "purchase", id).map(p -> {
-            String price = string(p, "stripePriceId", id).orElse("");
-            if (!STRIPE_PRICE.matcher(price).matches()) {
-                throw new InvalidRegistryException(id + " has an invalid stripePriceId \"" + price + "\".");
-            }
             int cents = integer(p, "priceCents", id).orElse(0);
             if (cents <= 0) {
                 throw new InvalidRegistryException(id + " needs a positive priceCents.");
@@ -150,7 +145,7 @@ public final class CosmeticRegistry {
             if (!CURRENCY.matcher(currency).matches()) {
                 throw new InvalidRegistryException(id + " needs a lowercase three-letter currency.");
             }
-            return new CosmeticUnlock.Purchase(price, cents, currency);
+            return new CosmeticUnlock.Purchase(cents, currency);
         });
         if (!free && patreon.isEmpty() && purchase.isEmpty()) {
             throw new InvalidRegistryException(id + " cannot be unlocked: set free, patreonMinCents or purchase.");

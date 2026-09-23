@@ -4,7 +4,8 @@ import java.util.Optional;
 import java.util.OptionalInt;
 
 public record CosmeticUnlock(boolean free, OptionalInt patreonMinCents, Optional<Purchase> purchase) {
-    public record Purchase(String stripePriceId, int priceCents, String currency) {
+    /** The registry price is sent to Stripe as an ephemeral price_data value. */
+    public record Purchase(int priceCents, String currency) {
     }
 
     public boolean patronPerk() {
