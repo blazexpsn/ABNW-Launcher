@@ -410,9 +410,9 @@ tasks.register("flatpak") {
 	if (isLinuxHost()) {
 		dependsOn(flatpakLinuxTask)
 	} else if (isWindowsHost()) {
-		// The release task also builds the JAR and Linux ZIP. Make the local JAR
-		// complete before WSL starts its own Linux Gradle invocation.
-		dependsOn(tasks.shadowJar)
+		// Stage the JAR and icons on Windows, then let WSL run the Linux-only
+		// Flatpak tools directly. Gradle itself does not need to be installed in WSL.
+		dependsOn(flatpakContextTask)
 	} else if (!isWindowsHost()) {
 		doLast {
 			throw new GradleException("The Flatpak task requires Linux or Windows with an initialized WSL distribution.")
@@ -435,34 +435,56 @@ tasks.register("flatpak") {
 			return
 		}
 		def wsl = findWsl()
-		def wslGradle = (System.getenv("ABNW_WSL_GRADLE") ?: "gradle").trim()
-		if (wslGradle.isEmpty()) {
-			throw new GradleException("ABNW_WSL_GRADLE cannot be empty. Set it to the Gradle executable available inside WSL, or unset it to use gradle.")
-		}
-		List<String> wslArguments = new ArrayList<>()
 		def wslDistribution = (System.getenv("ABNW_WSL_DISTRIBUTION") ?: "").trim()
-		if (!wslDistribution.isEmpty()) {
-			wslArguments.addAll(["--distribution", wslDistribution])
+		def invokeWsl = { List<?> toolArguments, String toolName ->
+			List<String> wslCommand = new ArrayList<>()
+			wslCommand.add(String.valueOf(wsl.absolutePath))
+			if (!wslDistribution.isEmpty()) {
+				wslCommand.add("--distribution")
+				wslCommand.add(wslDistribution)
+			}
+			wslCommand.add("--cd")
+			wslCommand.add(windowsPathToWsl(project.projectDir).toString())
+			wslCommand.add("--")
+			toolArguments.each { argument ->
+				wslCommand.add(String.valueOf(argument))
+			}
+			String[] wslCommandArray = new String[wslCommand.size()]
+			wslCommand.toArray(wslCommandArray)
+			def wslProcess = new ProcessBuilder(wslCommandArray)
+				.directory(project.projectDir)
+				.inheritIO()
+				.start()
+			def wslExitCode = wslProcess.waitFor()
+			if (wslExitCode != 0) {
+				if (wslExitCode == 127) {
+					throw new GradleException("WSL could not find ${toolName}. Install ${toolName} in the selected WSL distribution.")
+				}
+				throw new GradleException("The WSL ${toolName} command failed with exit code ${wslExitCode}.")
+			}
 		}
-		wslArguments.addAll([
-			"--cd", windowsPathToWsl(project.projectDir),
-			"--", wslGradle, "--no-daemon", ":launcher:flatpakLinux"
-		])
-		List<String> wslCommand = new ArrayList<>()
-		wslCommand.add(String.valueOf(wsl.absolutePath))
-		wslArguments.each { argument ->
-			wslCommand.add(String.valueOf(argument))
-		}
-		String[] wslCommandArray = new String[wslCommand.size()]
-		wslCommand.toArray(wslCommandArray)
-		def wslProcess = new ProcessBuilder(wslCommandArray)
-			.directory(project.projectDir)
-			.inheritIO()
-			.start()
-		def wslExitCode = wslProcess.waitFor()
-		if (wslExitCode != 0) {
-			throw new GradleException("The WSL Flatpak build failed with exit code ${wslExitCode}.")
-		}
+
+		project.delete(flatpakBuildDirectory.get().asFile, flatpakRepository.get().asFile, flatpakBundle.get().asFile)
+		def wslManifest = windowsPathToWsl(flatpakManifest).toString()
+		def wslBuildDirectory = windowsPathToWsl(flatpakBuildDirectory.get().asFile).toString()
+		def wslRepository = windowsPathToWsl(flatpakRepository.get().asFile).toString()
+		def wslBundle = windowsPathToWsl(flatpakBundle.get().asFile).toString()
+		invokeWsl([
+			"flatpak-builder",
+			"--force-clean",
+			"--repo=${wslRepository}",
+			wslBuildDirectory,
+			wslManifest
+		], "flatpak-builder")
+		invokeWsl([
+			"flatpak",
+			"build-bundle",
+			"--runtime-repo=https://flathub.org/repo/flathub.flatpakrepo",
+			wslRepository,
+			wslBundle,
+			flatpakAppId,
+			version.toString()
+		], "flatpak")
 		if (!flatpakBundle.get().asFile.isFile()) {
 			throw new GradleException("WSL completed without producing ${flatpakBundle.get().asFile}.")
 		}

@@ -357,9 +357,9 @@ The launcher also exposes a `flatpak` task. It uses the shaded launcher JAR, the
 gradle :launcher:flatpak
 ```
 
-On Linux, run this task with `flatpak` and `flatpak-builder` installed. On Windows, the task automatically calls `wsl.exe` and runs `:launcher:flatpakLinux` inside the configured WSL distribution; that distribution must have Gradle, `flatpak`, and `flatpak-builder` installed. The bundle is written to `launcher/build/distributions/ABNW Launcher-<version>.flatpak`. The Flatpak application ID is `org.teamzetaverse.ABNWLauncher`, and launcher data is kept in the app's sandbox data directory.
+On Linux, run this task with `flatpak` and `flatpak-builder` installed. On Windows, the task stages the JAR with Windows Gradle, then calls `wsl.exe` to run `flatpak-builder` and `flatpak` directly inside the configured WSL distribution; Gradle does not need to be installed in WSL. The bundle is written to `launcher/build/distributions/ABNW Launcher-<version>.flatpak`. The Flatpak application ID is `org.teamzetaverse.ABNWLauncher`, and launcher data is kept in the app's sandbox data directory.
 
-The root `publishLauncherRelease` task depends on this task and uploads the Flatpak next to the JAR, Linux ZIP, and Windows installer. Set `ABNW_WSL_GRADLE` if WSL exposes Gradle under a name or path other than `gradle`, or set `ABNW_WSL_DISTRIBUTION` when Ubuntu is not the default WSL distribution.
+The root `publishLauncherRelease` task depends on this task and uploads the Flatpak next to the JAR, Linux ZIP, and Windows installer. Set `ABNW_WSL_DISTRIBUTION` when Ubuntu is not the default WSL distribution.
 
 ## Mods for ABNW
 
