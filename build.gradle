@@ -439,7 +439,7 @@ tasks.register("flatpak") {
 		if (wslGradle.isEmpty()) {
 			throw new GradleException("ABNW_WSL_GRADLE cannot be empty. Set it to the Gradle executable available inside WSL, or unset it to use gradle.")
 		}
-		def wslArguments = []
+		List<String> wslArguments = new ArrayList<>()
 		def wslDistribution = (System.getenv("ABNW_WSL_DISTRIBUTION") ?: "").trim()
 		if (!wslDistribution.isEmpty()) {
 			wslArguments.addAll(["--distribution", wslDistribution])
@@ -448,7 +448,10 @@ tasks.register("flatpak") {
 			"--cd", windowsPathToWsl(project.projectDir),
 			"--", wslGradle, "--no-daemon", ":launcher:flatpakLinux"
 		])
-		def wslProcess = new ProcessBuilder([wsl.absolutePath] + wslArguments)
+		List<String> wslCommand = new ArrayList<>()
+		wslCommand.add(wsl.absolutePath)
+		wslCommand.addAll(wslArguments)
+		def wslProcess = new ProcessBuilder(wslCommand)
 			.directory(project.projectDir)
 			.inheritIO()
 			.start()
