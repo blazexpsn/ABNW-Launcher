@@ -1,0 +1,44 @@
+app-id: org.teamzetaverse.ABNWLauncher
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+
+command: abnw-launcher
+
+# OpenJDK is installed into /app/jre by the extension's install script. This
+# keeps the launcher independent of the host Java installation.
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.openjdk21
+
+finish-args:
+  - --socket=x11
+  - --socket=wayland
+  - --share=ipc
+  - --device=dri
+  - --share=network
+  - --socket=pulseaudio
+  - --persist=.local/share/abnwlauncher
+  - --persist=.minecraft
+  - --filesystem=xdg-download
+  - --env=JAVA_HOME=/app/jre
+  - --env=PATH=/app/jre/bin:/app/bin:/usr/bin
+
+modules:
+  - name: openjdk
+    buildsystem: simple
+    build-commands:
+      - /usr/lib/sdk/openjdk21/install.sh
+
+  - name: launcher-app
+    buildsystem: simple
+    sources:
+      - type: dir
+        path: ../build/flatpak/context
+    build-commands:
+      - install -D -m 0644 launcher.jar /app/share/abnw-launcher/launcher.jar
+      - install -D -m 0755 launch-abnw-launcher.sh /app/bin/abnw-launcher
+      - install -D -m 0644 org.teamzetaverse.ABNWLauncher.desktop /app/share/applications/org.teamzetaverse.ABNWLauncher.desktop
+      - install -D -m 0644 icons/16x16/apps/org.teamzetaverse.ABNWLauncher.png /app/share/icons/hicolor/16x16/apps/org.teamzetaverse.ABNWLauncher.png
+      - install -D -m 0644 icons/32x32/apps/org.teamzetaverse.ABNWLauncher.png /app/share/icons/hicolor/32x32/apps/org.teamzetaverse.ABNWLauncher.png
+      - install -D -m 0644 icons/48x48/apps/org.teamzetaverse.ABNWLauncher.png /app/share/icons/hicolor/48x48/apps/org.teamzetaverse.ABNWLauncher.png
+      - install -D -m 0644 icons/256x256/apps/org.teamzetaverse.ABNWLauncher.png /app/share/icons/hicolor/256x256/apps/org.teamzetaverse.ABNWLauncher.png

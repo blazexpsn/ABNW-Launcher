@@ -349,6 +349,18 @@ The launcher is compiled and packaged with UTF-8 explicitly enabled so text rema
 
 The task automatically runs `launcher/scripts/find-wix.py`. The script first validates the cached path in `launcher/build/jpackage/wixpath.txt`; if that file is missing or stale, it searches `PATH`, Windows installer registry entries, common package-manager locations, and all filesystem drives for WiX 3 (`candle.exe`/`light.exe`) or WiX 4/5 (`wix.exe`). A successful search rewrites `wixpath.txt`, and the discovered directory is added to the packaging process. If WiX is not installed, install WiX 3+ or WiX 4/5 and run the task again.
 
+## Building the Flatpak
+
+The launcher also exposes a `flatpak` task. It uses the shaded launcher JAR, the existing ABNW icons, and the Freedesktop OpenJDK 21 SDK extension to produce a self-contained Flatpak bundle with a Java runtime:
+
+```text
+gradle :launcher:flatpak
+```
+
+On Linux, run this task with `flatpak` and `flatpak-builder` installed. On Windows, the task automatically calls `wsl.exe` and runs `:launcher:flatpakLinux` inside the configured WSL distribution; that distribution must have Gradle, `flatpak`, and `flatpak-builder` installed. The bundle is written to `launcher/build/distributions/ABNW Launcher-<version>.flatpak`. The Flatpak application ID is `org.teamzetaverse.ABNWLauncher`, and launcher data is kept in the app's sandbox data directory.
+
+The root `publishLauncherRelease` task depends on this task and uploads the Flatpak next to the JAR, Linux ZIP, and Windows installer. Set `ABNW_WSL_GRADLE` if WSL exposes Gradle under a name or path other than `gradle`, or set `ABNW_WSL_DISTRIBUTION` when Ubuntu is not the default WSL distribution.
+
 ## Mods for ABNW
 
 ABNW has its own native modding platform.

@@ -271,6 +271,192 @@ def linuxZip = tasks.register("linuxZip", Zip) {
 	}
 }
 
+def flatpakAppId = "org.teamzetaverse.ABNWLauncher"
+def flatpakRoot = layout.buildDirectory.dir("flatpak")
+def flatpakContext = flatpakRoot.map { it.dir("context") }
+def flatpakBuildDirectory = flatpakRoot.map { it.dir("build") }
+def flatpakRepository = flatpakRoot.map { it.dir("repo") }
+def flatpakBundle = layout.buildDirectory.file("distributions/ABNW Launcher-${version}.flatpak")
+def flatpakManifest = file("flatpak/${flatpakAppId}.yml")
+
+def isLinuxHost = {
+	System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux")
+}
+
+def isWindowsHost = {
+	System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")
+}
+
+def requireFlatpakCommand = { String command ->
+	def path = System.getenv("PATH") ?: ""
+	def executable = path.split(java.util.regex.Pattern.quote(File.pathSeparator))
+		.collect { new File(it, command) }
+		.find { it.isFile() && it.canExecute() }
+	if (executable == null) {
+		throw new GradleException("Could not find ${command}. Install flatpak-builder and Flatpak, then run :launcher:flatpak on Linux.")
+	}
+	executable
+}
+
+def flatpakContextTask = tasks.register("prepareFlatpakContext", Sync) {
+	group = "distribution"
+	description = "Stages the launcher JAR and ABNW icons for Flatpak."
+	dependsOn(tasks.shadowJar)
+	into(flatpakContext)
+	from(tasks.shadowJar) {
+		rename { "launcher.jar" }
+	}
+	from("flatpak") {
+		include("launch-abnw-launcher.sh")
+		include("${flatpakAppId}.desktop")
+	}
+	from("src/main/resources/assets/icon_16.png") {
+		into("icons/16x16/apps")
+		rename { "${flatpakAppId}.png" }
+	}
+	from("src/main/resources/assets/icon_32.png") {
+		into("icons/32x32/apps")
+		rename { "${flatpakAppId}.png" }
+	}
+	from("src/main/resources/assets/icon_48.png") {
+		into("icons/48x48/apps")
+		rename { "${flatpakAppId}.png" }
+	}
+	from("src/main/resources/assets/icon_256.png") {
+		into("icons/256x256/apps")
+		rename { "${flatpakAppId}.png" }
+	}
+}
+
+tasks.register("flatpakBuild", Exec) {
+	group = "distribution"
+	description = "Builds the ABNW Launcher Flatpak repository. Requires Linux flatpak-builder."
+	dependsOn(flatpakContextTask)
+	inputs.file(flatpakManifest)
+	inputs.dir(flatpakContext)
+	outputs.dir(flatpakRepository)
+
+	doFirst {
+		if (!System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux")) {
+			throw new GradleException("The Flatpak task must run on Linux with flatpak-builder installed.")
+		}
+		def builder = requireFlatpakCommand("flatpak-builder")
+		flatpakBuildDirectory.get().asFile.mkdirs()
+		flatpakRepository.get().asFile.mkdirs()
+		commandLine(builder.absolutePath,
+			"--force-clean",
+			"--repo=${flatpakRepository.get().asFile.absolutePath}",
+			flatpakBuildDirectory.get().asFile.absolutePath,
+			flatpakManifest.absolutePath)
+	}
+}
+
+def findWsl = {
+	def systemRoot = System.getenv("SystemRoot") ?: "C:\\Windows"
+	def candidates = [
+		new File(systemRoot, "System32/wsl.exe"),
+		new File(systemRoot, "Sysnative/wsl.exe")
+	]
+	def executable = candidates.find { it.isFile() }
+	if (executable == null) {
+		throw new GradleException("Could not find wsl.exe. Install and initialize an Ubuntu WSL distribution before building the Flatpak.")
+	}
+	executable
+}
+
+def windowsPathToWsl = { File directory ->
+	def absolute = directory.absoluteFile.absolutePath
+	if (!(absolute ==~ /[A-Za-z]:[\\\\].*/)) {
+		throw new GradleException("The WSL Flatpak build needs a drive-letter workspace path, got ${absolute}.")
+	}
+	def drive = absolute.substring(0, 1).toLowerCase(Locale.ROOT)
+	def rest = absolute.substring(2).replace('\\' as char, '/' as char)
+	"/mnt/${drive}${rest.startsWith('/') ? rest : '/' + rest}"
+}
+
+def flatpakBundleTask = tasks.register("flatpakBundle", Exec) {
+	group = "distribution"
+	description = "Builds the ABNW Launcher Flatpak bundle. Requires Linux flatpak-builder and Flatpak."
+	dependsOn("flatpakBuild")
+	inputs.dir(flatpakRepository)
+	outputs.file(flatpakBundle)
+
+	doFirst {
+		if (!System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux")) {
+			throw new GradleException("The Flatpak task must run on Linux with flatpak-builder installed.")
+		}
+		def flatpak = requireFlatpakCommand("flatpak")
+		flatpakBundle.get().asFile.parentFile.mkdirs()
+		project.delete(flatpakBundle.get().asFile)
+		commandLine(flatpak.absolutePath,
+			"build-bundle",
+			"--runtime-repo=https://flathub.org/repo/flathub.flatpakrepo",
+			flatpakRepository.get().asFile.absolutePath,
+			flatpakBundle.get().asFile.absolutePath,
+			flatpakAppId,
+			version.toString())
+	}
+}
+
+def flatpakLinuxTask = tasks.register("flatpakLinux") {
+	group = "distribution"
+	description = "Builds the ABNW Launcher Flatpak inside a Linux environment."
+	dependsOn(flatpakBundleTask)
+}
+
+tasks.register("flatpak") {
+	group = "distribution"
+	description = "Builds the ABNW Launcher Flatpak, using WSL automatically on Windows."
+	if (isLinuxHost()) {
+		dependsOn(flatpakLinuxTask)
+	} else if (isWindowsHost()) {
+		// The release task also builds the JAR and Linux ZIP. Make the local JAR
+		// complete before WSL starts its own Linux Gradle invocation.
+		dependsOn(tasks.shadowJar)
+	} else if (!isWindowsHost()) {
+		doLast {
+			throw new GradleException("The Flatpak task requires Linux or Windows with an initialized WSL distribution.")
+		}
+	}
+	inputs.file(flatpakManifest)
+	inputs.file(tasks.shadowJar.archiveFile)
+	inputs.files(
+		"flatpak/launch-abnw-launcher.sh",
+		"flatpak/${flatpakAppId}.desktop",
+		"src/main/resources/assets/icon_16.png",
+		"src/main/resources/assets/icon_32.png",
+		"src/main/resources/assets/icon_48.png",
+		"src/main/resources/assets/icon_256.png"
+	)
+	outputs.file(flatpakBundle)
+
+	doLast {
+		if (!isWindowsHost()) {
+			return
+		}
+		def wsl = findWsl()
+		def wslGradle = (System.getenv("ABNW_WSL_GRADLE") ?: "gradle").trim()
+		if (wslGradle.isEmpty()) {
+			throw new GradleException("ABNW_WSL_GRADLE cannot be empty. Set it to the Gradle executable available inside WSL, or unset it to use gradle.")
+		}
+		def wslArguments = []
+		def wslDistribution = (System.getenv("ABNW_WSL_DISTRIBUTION") ?: "").trim()
+		if (!wslDistribution.isEmpty()) {
+			wslArguments.addAll(["--distribution", wslDistribution])
+		}
+		wslArguments.addAll([
+			"--cd", windowsPathToWsl(project.projectDir),
+			"--", wslGradle, "--no-daemon", ":launcher:flatpakLinux"
+		])
+		project.exec {
+			commandLine([wsl.absolutePath] + wslArguments)
+		}
+		if (!flatpakBundle.get().asFile.isFile()) {
+			throw new GradleException("WSL completed without producing ${flatpakBundle.get().asFile}.")
+		}
+	}
+}
+
 tasks.build {
 	dependsOn tasks.shadowJar, linuxZip
 }

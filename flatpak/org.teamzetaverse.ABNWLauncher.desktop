@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=ABNW Launcher
+Comment=The A Brand New World launcher.
+Exec=abnw-launcher %U
+Icon=org.teamzetaverse.ABNWLauncher
+Terminal=false
+Type=Application
+Categories=Game;
+Keywords=Minecraft;ABNW;Launcher;
+StartupWMClass=ABNW Launcher
