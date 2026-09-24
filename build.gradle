@@ -449,9 +449,13 @@ tasks.register("flatpak") {
 			"--", wslGradle, "--no-daemon", ":launcher:flatpakLinux"
 		])
 		List<String> wslCommand = new ArrayList<>()
-		wslCommand.add(wsl.absolutePath)
-		wslCommand.addAll(wslArguments)
-		def wslProcess = new ProcessBuilder(wslCommand)
+		wslCommand.add(String.valueOf(wsl.absolutePath))
+		wslArguments.each { argument ->
+			wslCommand.add(String.valueOf(argument))
+		}
+		String[] wslCommandArray = new String[wslCommand.size()]
+		wslCommand.toArray(wslCommandArray)
+		def wslProcess = new ProcessBuilder(wslCommandArray)
 			.directory(project.projectDir)
 			.inheritIO()
 			.start()
