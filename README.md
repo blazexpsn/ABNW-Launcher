@@ -357,9 +357,15 @@ The launcher also exposes a `flatpak` task. It uses the shaded launcher JAR, the
 gradle :launcher:flatpak
 ```
 
-On Linux, run this task with `flatpak` and `flatpak-builder` installed. On Windows, the task stages the JAR with Windows Gradle, then calls `wsl.exe` to run `flatpak-builder` and `flatpak` directly inside the configured WSL distribution; Gradle does not need to be installed in WSL. The bundle is written to `launcher/build/distributions/ABNW Launcher-<version>.flatpak`. The Flatpak application ID is `org.teamzetaverse.ABNWLauncher`, and launcher data is kept in the app's sandbox data directory.
+On Linux, run this task with `flatpak` and `flatpak-builder` installed. On Windows, the task stages only the launcher JAR, manifest, script, desktop entry, and icons with Windows Gradle, then copies those inputs into the persistent WSL-native workspace `~/abnw-flatpak-build/org.teamzetaverse.ABNWLauncher`. `flatpak-builder`, repository export, and bundle creation all run there; only the finished `.flatpak` is copied back to Windows. Gradle does not need to be installed in WSL.
 
-The root `publishLauncherRelease` task depends on this task and uploads the Flatpak next to the JAR, Linux ZIP, and Windows installer. Set `ABNW_WSL_DISTRIBUTION` when Ubuntu is not the default WSL distribution.
+The Windows task adds Flathub and automatically installs any missing 24.08 Platform, SDK, and OpenJDK 21 extension refs. Existing SDKs, runtimes, Flatpak downloads, and builder caches are preserved between builds. The task prints each stage as it runs and ends with a timing breakdown. The bundle is written to `launcher/build/distributions/ABNW Launcher-<version>.flatpak`. The Flatpak application ID is `org.teamzetaverse.ABNWLauncher`, and launcher data is kept in the app's sandbox data directory.
+
+The normal build keeps the native WSL build directory and repository for incremental builds. Use `gradle :launcher:cleanFlatpakBuild` when those disposable directories need to be removed; Flatpak SDK and download caches are left intact. Use `gradle :launcher:flatpak -PflatpakFullClean=true` to force a clean build during the next run. Set `ABNW_FLATPAK_WSL_ROOT` or `-PflatpakWslRoot=/some/native/path` to override the WSL workspace. Paths under `/mnt/c`, `/mnt/d`, or another Windows-mounted directory are rejected because they are significantly slower.
+
+Use `gradle :launcher:flatpakStatus` in another terminal to inspect active `flatpak`, `flatpak-builder`, OSTree, Gradle, and Java processes in WSL. Set `ABNW_WSL_DISTRIBUTION` when Ubuntu is not the default WSL distribution.
+
+The root `publishLauncherRelease` task depends on this task and uploads the finished Windows-side Flatpak next to the JAR, Linux ZIP, and Windows installer.
 
 ## Mods for ABNW
 

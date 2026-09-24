@@ -7,12 +7,20 @@ plugins {
 }
 
 def launcher = new Properties()
-file("launcher.properties").withInputStream { launcher.load(it) }
+
+file("launcher.properties").withInputStream {
+	launcher.load(it)
+}
+
 def prop = { String key ->
 	def value = launcher.getProperty(key)
+
 	if (value == null) {
-		throw new GradleException("launcher.properties is missing ${key}")
+		throw new GradleException(
+				"launcher.properties is missing ${key}"
+		)
 	}
+
 	value.trim()
 }
 
@@ -25,7 +33,11 @@ application {
 
 java {
 	toolchain {
-		languageVersion.set(JavaLanguageVersion.of(prop("java_version") as int))
+		languageVersion.set(
+				JavaLanguageVersion.of(
+						prop("java_version") as int
+				)
+		)
 	}
 }
 
@@ -38,49 +50,94 @@ repositories {
 }
 
 def imguiVersion = prop("imgui_version")
-def lwjglNatives = ["natives-windows", "natives-windows-arm64", "natives-linux", "natives-linux-arm64", "natives-macos", "natives-macos-arm64"]
+
+def lwjglNatives = [
+		"natives-windows",
+		"natives-windows-arm64",
+		"natives-linux",
+		"natives-linux-arm64",
+		"natives-macos",
+		"natives-macos-arm64"
+]
 
 dependencies {
 	implementation "io.github.spair:imgui-java-binding:${imguiVersion}"
 	implementation "io.github.spair:imgui-java-lwjgl3:${imguiVersion}"
+
 	runtimeOnly "io.github.spair:imgui-java-natives-windows:${imguiVersion}"
 	runtimeOnly "io.github.spair:imgui-java-natives-linux:${imguiVersion}"
 	runtimeOnly "io.github.spair:imgui-java-natives-macos:${imguiVersion}"
 
-	implementation platform("org.lwjgl:lwjgl-bom:${prop("lwjgl_version")}")
-	["lwjgl", "lwjgl-glfw", "lwjgl-opengl", "lwjgl-stb", "lwjgl-tinyfd"].each { module ->
+	implementation platform(
+			"org.lwjgl:lwjgl-bom:${prop("lwjgl_version")}"
+	)
+
+	[
+			"lwjgl",
+			"lwjgl-glfw",
+			"lwjgl-opengl",
+			"lwjgl-stb",
+			"lwjgl-tinyfd"
+	].each { module ->
+
 		implementation "org.lwjgl:${module}"
-		lwjglNatives.each { natives -> runtimeOnly "org.lwjgl:${module}::${natives}" }
+
+		lwjglNatives.each { natives ->
+			runtimeOnly "org.lwjgl:${module}::${natives}"
+		}
 	}
 
 	implementation "com.google.code.gson:gson:${prop("gson_version")}"
 	implementation "org.teamzetaverse:cosmetics-api:1.0.0"
-	implementation "com.davidehrmann.vcdiff:vcdiff-core:${prop("vcdiff_version")}"
+
+	implementation(
+			"com.davidehrmann.vcdiff:vcdiff-core:" +
+					"${prop("vcdiff_version")}"
+	)
+
 	implementation "org.slf4j:slf4j-api:${prop("slf4j_version")}"
 	implementation "org.slf4j:slf4j-nop:${prop("slf4j_version")}"
 }
 
+/*
+ * ============================================================
+ * BUILD INFORMATION
+ * ============================================================
+ */
+
 def buildInfo = [
-		version    : version.toString(),
-		repository : prop("releases_repository"),
-		branch     : prop("releases_branch"),
-		launcherRepository: prop("launcher_repository"),
-		launcherBranch    : prop("launcher_branch"),
-		msaClientId: prop("msa_client_id"),
-		discordClientId   : prop("discord_client_id"),
-		cosmeticsApiUrl   : launcher.getProperty("cosmetics_api_url", "").trim(),
-		patreonPageUrl    : launcher.getProperty("patreon_page_url", "").trim(),
+		version            : version.toString(),
+		repository         : prop("releases_repository"),
+		branch             : prop("releases_branch"),
+		launcherRepository : prop("launcher_repository"),
+		launcherBranch     : prop("launcher_branch"),
+		msaClientId        : prop("msa_client_id"),
+		discordClientId    : prop("discord_client_id"),
+		cosmeticsApiUrl    : launcher
+				.getProperty("cosmetics_api_url", "")
+				.trim(),
+		patreonPageUrl     : launcher
+				.getProperty("patreon_page_url", "")
+				.trim()
 ]
 
 tasks.processResources {
 	inputs.properties(buildInfo)
+
 	filesMatching("abnw-launcher.properties") {
 		expand(buildInfo)
 	}
+
 	from("feed") {
 		into("feed")
 	}
 }
+
+/*
+ * ============================================================
+ * SHADOW JAR
+ * ============================================================
+ */
 
 tasks.jar {
 	enabled = false
@@ -89,444 +146,2181 @@ tasks.jar {
 tasks.shadowJar {
 	archiveBaseName.set("abnw-launcher")
 	archiveClassifier.set("")
-	from(files("LICENSE", "THIRD-PARTY-NOTICES.md")) {
+
+	from(
+			files(
+					"LICENSE",
+					"THIRD-PARTY-NOTICES.md"
+			)
+	) {
 		into("META-INF/abnw-launcher")
 	}
+
 	manifest {
-		attributes("Main-Class": application.mainClass.get(), "Implementation-Version": version.toString())
+		attributes(
+				"Main-Class": application.mainClass.get(),
+				"Implementation-Version": version.toString()
+		)
 	}
 }
 
-def jpackageInput = layout.buildDirectory.dir("jpackage/input")
-def jpackageOutput = layout.buildDirectory.dir("distributions")
-def wixPathCache = layout.buildDirectory.file("jpackage/wixpath.txt")
-def windowsIcon = layout.buildDirectory.file("jpackage/abnw-launcher.ico")
-def windowsIconInputs = [16, 32, 48, 256].collect {
-	file("src/main/resources/assets/icon_${it}.png")
-}
+/*
+ * ============================================================
+ * WINDOWS JPACKAGE
+ * ============================================================
+ */
+
+def jpackageInput =
+		layout.buildDirectory.dir("jpackage/input")
+
+def jpackageOutput =
+		layout.buildDirectory.dir("distributions")
+
+def wixPathCache =
+		layout.buildDirectory.file("jpackage/wixpath.txt")
+
+def windowsIcon =
+		layout.buildDirectory.file(
+				"jpackage/abnw-launcher.ico"
+		)
+
+def windowsIconInputs =
+		[
+				16,
+				32,
+				48,
+				256
+		].collect {
+			file(
+					"src/main/resources/assets/icon_${it}.png"
+			)
+		}
 
 def findJpackage = {
-	if (!System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")) {
-		throw new GradleException("The jpackage task creates a Windows application and must run on Windows.")
+	if (
+			!System
+					.getProperty("os.name")
+					.toLowerCase(Locale.ROOT)
+					.contains("windows")
+	) {
+		throw new GradleException(
+				"The jpackage task creates a Windows application " +
+						"and must run on Windows."
+		)
 	}
 
-	def javaHome = file(System.getProperty("java.home"))
-	def jpackageExecutable = new File(javaHome, "bin/jpackage.exe")
+	def javaHome =
+			file(System.getProperty("java.home"))
+
+	def jpackageExecutable =
+			new File(
+					javaHome,
+					"bin/jpackage.exe"
+			)
+
 	if (!jpackageExecutable.isFile()) {
-		jpackageExecutable = new File(javaHome, "bin/jpackage")
+		jpackageExecutable =
+				new File(
+						javaHome,
+						"bin/jpackage"
+				)
 	}
+
 	if (!jpackageExecutable.isFile()) {
-		throw new GradleException("Could not find jpackage under ${javaHome}. Run Gradle with a JDK, not a JRE.")
+		throw new GradleException(
+				"Could not find jpackage under ${javaHome}. " +
+						"Run Gradle with a JDK, not a JRE."
+		)
 	}
+
 	jpackageExecutable
 }
 
 def findWix = {
-	def output = new ByteArrayOutputStream()
-	def script = file("scripts/find-wix.py")
+	def output =
+			new ByteArrayOutputStream()
+
+	def script =
+			file("scripts/find-wix.py")
+
 	def pythonCommands = [
-		[System.getenv("PYTHON")].findAll { it },
-		["python"],
-		["py", "-3"]
-	].findAll { !it.isEmpty() }
+			[System.getenv("PYTHON")].findAll { it },
+			["python"],
+			["py", "-3"]
+	].findAll {
+		!it.isEmpty()
+	}
+
 	def process = null
 	def startFailure = null
+
 	for (def command : pythonCommands) {
 		try {
-			process = new ProcessBuilder(command + [script.absolutePath, "--cache-file", wixPathCache.get().asFile.absolutePath])
-				.redirectError(ProcessBuilder.Redirect.INHERIT)
-				.start()
+			process =
+					new ProcessBuilder(
+							command + [
+									script.absolutePath,
+									"--cache-file",
+									wixPathCache
+											.get()
+											.asFile
+											.absolutePath
+							]
+					)
+							.redirectError(
+									ProcessBuilder
+											.Redirect
+											.INHERIT
+							)
+							.start()
+
 			break
+
 		} catch (IOException failure) {
 			startFailure = failure
 		}
 	}
+
 	if (process == null) {
-		throw new GradleException("Could not start Python to locate WiX. Install Python or set the PYTHON environment variable.", startFailure)
+		throw new GradleException(
+				"Could not start Python to locate WiX. " +
+						"Install Python or set the PYTHON environment variable.",
+				startFailure
+		)
 	}
-	output << process.inputStream.getText("UTF-8")
-	def exitCode = process.waitFor()
-	def directory = output.toString("UTF-8").trim()
-	if (exitCode != 0 || directory.isEmpty()) {
-		throw new GradleException("Could not locate WiX. Install WiX 3+ or WiX 4/5, then run the jpackage task again.")
+
+	output <<
+			process
+					.inputStream
+					.getText("UTF-8")
+
+	def exitCode =
+			process.waitFor()
+
+	def directory =
+			output
+					.toString("UTF-8")
+					.trim()
+
+	if (
+			exitCode != 0 ||
+					directory.isEmpty()
+	) {
+		throw new GradleException(
+				"Could not locate WiX. " +
+						"Install WiX 3+ or WiX 4/5, " +
+						"then run the jpackage task again."
+		)
 	}
+
 	directory
 }
 
-def jpackageArguments = { String packageType, File inputDirectory, File outputDirectory ->
-	[
-		findJpackage().absolutePath,
-		"--type", packageType,
-		"--name", "ABNW Launcher",
-		"--app-version", version.toString(),
-		"--vendor", "Team Zetaverse",
-		"--description", "The A Brand New World launcher.",
-		"--java-options", "-Dfile.encoding=UTF-8",
-		"--java-options", "-Dstdout.encoding=UTF-8",
-		"--java-options", "-Dstderr.encoding=UTF-8",
-		"--input", inputDirectory.absolutePath,
-		"--main-jar", tasks.shadowJar.archiveFile.get().asFile.name,
-		"--main-class", application.mainClass.get(),
-		"--dest", outputDirectory.absolutePath
-	]
+def jpackageArguments = {
+	String packageType,
+	File inputDirectory,
+	File outputDirectory ->
+
+		[
+				findJpackage().absolutePath,
+
+				"--type",
+				packageType,
+
+				"--name",
+				"ABNW Launcher",
+
+				"--app-version",
+				version.toString(),
+
+				"--vendor",
+				"Team Zetaverse",
+
+				"--description",
+				"The A Brand New World launcher.",
+
+				"--java-options",
+				"-Dfile.encoding=UTF-8",
+
+				"--java-options",
+				"-Dstdout.encoding=UTF-8",
+
+				"--java-options",
+				"-Dstderr.encoding=UTF-8",
+
+				"--input",
+				inputDirectory.absolutePath,
+
+				"--main-jar",
+				tasks.shadowJar
+						.archiveFile
+						.get()
+						.asFile
+						.name,
+
+				"--main-class",
+				application.mainClass.get(),
+
+				"--dest",
+				outputDirectory.absolutePath
+		]
 }
 
-def windowsIconTask = tasks.register("generateWindowsIcon") {
-	group = "distribution"
-	description = "Builds the multi-size Windows icon used by jpackage and its shortcuts."
-	inputs.files(windowsIconInputs)
-	outputs.file(windowsIcon)
+/*
+ * ============================================================
+ * WINDOWS ICON
+ * ============================================================
+ */
 
-	doLast {
-		def images = windowsIconInputs.collect { source ->
-			if (!source.isFile()) {
-				throw new GradleException("Missing launcher icon: ${source}")
+def windowsIconTask =
+		tasks.register(
+				"generateWindowsIcon"
+		) {
+
+			group = "distribution"
+
+			description =
+					"Builds the multi-size Windows icon " +
+							"used by jpackage and its shortcuts."
+
+			inputs.files(
+					windowsIconInputs
+			)
+
+			outputs.file(
+					windowsIcon
+			)
+
+			doLast {
+				def images =
+						windowsIconInputs.collect { source ->
+
+							if (!source.isFile()) {
+								throw new GradleException(
+										"Missing launcher icon: ${source}"
+								)
+							}
+
+							[
+									size:
+											Integer.parseInt(
+													source.name.replaceAll(
+															"[^0-9]",
+															""
+													)
+											),
+
+									bytes:
+											source.bytes
+							]
+						}
+
+				def headerSize =
+						6 + (16 * images.size())
+
+				def totalSize =
+						headerSize +
+								images.sum {
+									it.bytes.length
+								}
+
+				def icon =
+						ByteBuffer
+								.allocate(totalSize)
+								.order(
+										ByteOrder.LITTLE_ENDIAN
+								)
+
+				icon.putShort(
+						0 as short
+				)
+
+				icon.putShort(
+						1 as short
+				)
+
+				icon.putShort(
+						images.size() as short
+				)
+
+				def offset =
+						headerSize
+
+				images.each { image ->
+					def dimension =
+							image.size == 256
+									? 0
+									: image.size
+
+					icon.put(
+							dimension as byte
+					)
+
+					icon.put(
+							dimension as byte
+					)
+
+					icon.put(
+							0 as byte
+					)
+
+					icon.put(
+							0 as byte
+					)
+
+					icon.putShort(
+							1 as short
+					)
+
+					icon.putShort(
+							32 as short
+					)
+
+					icon.putInt(
+							image.bytes.length
+					)
+
+					icon.putInt(
+							offset
+					)
+
+					offset +=
+							image.bytes.length
+				}
+
+				images.each { image ->
+					icon.put(
+							image.bytes
+					)
+				}
+
+				windowsIcon
+						.get()
+						.asFile
+						.parentFile
+						.mkdirs()
+
+				windowsIcon
+						.get()
+						.asFile
+						.bytes =
+						icon.array()
 			}
-			[size: Integer.parseInt(source.name.replaceAll("[^0-9]", "")), bytes: source.bytes]
 		}
-		def headerSize = 6 + (16 * images.size())
-		def totalSize = headerSize + images.sum { it.bytes.length }
-		def icon = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN)
-		icon.putShort(0 as short)
-		icon.putShort(1 as short)
-		icon.putShort(images.size() as short)
-		def offset = headerSize
-		images.each { image ->
-			def dimension = image.size == 256 ? 0 : image.size
-			icon.put(dimension as byte)
-			icon.put(dimension as byte)
-			icon.put(0 as byte)
-			icon.put(0 as byte)
-			icon.putShort(1 as short)
-			icon.putShort(32 as short)
-			icon.putInt(image.bytes.length)
-			icon.putInt(offset)
-			offset += image.bytes.length
+
+/*
+ * ============================================================
+ * JPACKAGE INPUT
+ * ============================================================
+ */
+
+def jpackageInputTask =
+		tasks.register(
+				"prepareJpackageInput",
+				Sync
+		) {
+
+			group = "distribution"
+
+			description =
+					"Stages the launcher JAR for jpackage."
+
+			dependsOn(
+					tasks.shadowJar
+			)
+
+			from(
+					tasks.shadowJar
+			)
+
+			into(
+					jpackageInput
+			)
 		}
-		images.each { image -> icon.put(image.bytes) }
-		windowsIcon.get().asFile.parentFile.mkdirs()
-		windowsIcon.get().asFile.bytes = icon.array()
-	}
-}
 
-def jpackageInputTask = tasks.register("prepareJpackageInput", Sync) {
+/*
+ * ============================================================
+ * WINDOWS INSTALLER
+ * ============================================================
+ */
+
+tasks.register(
+		"jpackage",
+		Exec
+) {
+
 	group = "distribution"
-	description = "Stages the launcher JAR for jpackage."
-	dependsOn(tasks.shadowJar)
-	from(tasks.shadowJar)
-	into(jpackageInput)
-}
 
-tasks.register("jpackage", Exec) {
-	group = "distribution"
-	description = "Builds the Windows ABNW Launcher installer as an .exe with a bundled Java runtime."
-	dependsOn(jpackageInputTask, windowsIconTask)
+	description =
+			"Builds the Windows ABNW Launcher installer " +
+					"as an .exe with a bundled Java runtime."
 
-	def outputFile = jpackageOutput.map { it.file("ABNW Launcher-${version}.exe") }
-	inputs.file(tasks.named("shadowJar").flatMap { it.archiveFile })
-	outputs.file(outputFile)
+	dependsOn(
+			jpackageInputTask,
+			windowsIconTask
+	)
+
+	def outputFile =
+			jpackageOutput.map {
+				it.file(
+						"ABNW Launcher-${version}.exe"
+				)
+			}
+
+	inputs.file(
+			tasks
+					.named("shadowJar")
+					.flatMap {
+						it.archiveFile
+					}
+	)
+
+	outputs.file(
+			outputFile
+	)
 
 	doFirst {
-		def inputDirectory = jpackageInput.get().asFile
-		def destination = jpackageOutput.get().asFile
-		def wixDirectory = findWix()
+		def inputDirectory =
+				jpackageInput
+						.get()
+						.asFile
+
+		def destination =
+				jpackageOutput
+						.get()
+						.asFile
+
+		def wixDirectory =
+				findWix()
+
 		destination.mkdirs()
-		project.delete(outputFile.get().asFile)
-		environment("Path", wixDirectory + File.pathSeparator + (System.getenv("Path") ?: System.getenv("PATH") ?: ""))
-		commandLine(jpackageArguments("exe", inputDirectory, destination) + [
-			"--icon", windowsIcon.get().asFile.absolutePath,
-			"--win-menu",
-			"--win-menu-group", "ABNW",
-			"--win-shortcut",
-			"--win-upgrade-uuid", "9d7f5c1b-9b3a-4bc2-8a21-7d2c8f9b1e44"
-		])
+
+		project.delete(
+				outputFile
+						.get()
+						.asFile
+		)
+
+		environment(
+				"Path",
+
+				wixDirectory +
+						File.pathSeparator +
+						(
+								System.getenv("Path")
+										?:
+										System.getenv("PATH")
+												?:
+												""
+						)
+		)
+
+		commandLine(
+				jpackageArguments(
+						"exe",
+						inputDirectory,
+						destination
+				) + [
+
+						"--icon",
+						windowsIcon
+								.get()
+								.asFile
+								.absolutePath,
+
+						"--win-menu",
+
+						"--win-menu-group",
+						"ABNW",
+
+						"--win-shortcut",
+
+						"--win-upgrade-uuid",
+						"9d7f5c1b-9b3a-4bc2-8a21-7d2c8f9b1e44"
+				]
+		)
 	}
 }
 
-def linuxZip = tasks.register("linuxZip", Zip) {
-	group = "distribution"
-	description = "Packages the launcher jar with launch.sh and the Java install scripts for Linux."
-	def folder = "abnw-launcher-${version}"
-	archiveBaseName.set("abnw-launcher")
-	archiveClassifier.set("linux")
-	destinationDirectory.set(layout.buildDirectory.dir("distributions"))
-	into(folder) {
-		from(tasks.shadowJar)
-		from(files("LICENSE", "THIRD-PARTY-NOTICES.md"))
-		from("linux") {
-			include("LINUX-GUIDE.md")
-		}
-	}
-	into(folder) {
-		from("linux") {
-			include("**/*.sh")
-		}
-		filter(org.apache.tools.ant.filters.FixCrLfFilter, eol: org.apache.tools.ant.filters.FixCrLfFilter.CrLf.newInstance("lf"))
-		filePermissions {
-			unix("rwxr-xr-x")
-		}
-	}
-	dirPermissions {
-		unix("rwxr-xr-x")
-	}
-}
+/*
+ * ============================================================
+ * LINUX ZIP
+ * ============================================================
+ */
 
-def flatpakAppId = "org.teamzetaverse.ABNWLauncher"
-def flatpakRoot = layout.buildDirectory.dir("flatpak")
-def flatpakContext = flatpakRoot.map { it.dir("context") }
-def flatpakBuildDirectory = flatpakRoot.map { it.dir("build") }
-def flatpakRepository = flatpakRoot.map { it.dir("repo") }
-def flatpakBundle = layout.buildDirectory.file("distributions/ABNW Launcher-${version}.flatpak")
-def flatpakManifest = file("flatpak/${flatpakAppId}.yml")
+def linuxZip =
+		tasks.register(
+				"linuxZip",
+				Zip
+		) {
+
+			group = "distribution"
+
+			description =
+					"Packages the launcher jar with launch.sh " +
+							"and the Java install scripts for Linux."
+
+			def folder =
+					"abnw-launcher-${version}"
+
+			archiveBaseName.set(
+					"abnw-launcher"
+			)
+
+			archiveClassifier.set(
+					"linux"
+			)
+
+			destinationDirectory.set(
+					layout
+							.buildDirectory
+							.dir("distributions")
+			)
+
+			into(folder) {
+				from(
+						tasks.shadowJar
+				)
+
+				from(
+						files(
+								"LICENSE",
+								"THIRD-PARTY-NOTICES.md"
+						)
+				)
+
+				from("linux") {
+					include(
+							"LINUX-GUIDE.md"
+					)
+				}
+			}
+
+			into(folder) {
+				from("linux") {
+					include(
+							"**/*.sh"
+					)
+				}
+
+				filter(
+						org.apache.tools.ant.filters.FixCrLfFilter,
+						eol:
+								org.apache.tools.ant.filters
+										.FixCrLfFilter
+										.CrLf
+										.newInstance("lf")
+				)
+
+				filePermissions {
+					unix(
+							"rwxr-xr-x"
+					)
+				}
+			}
+
+			dirPermissions {
+				unix(
+						"rwxr-xr-x"
+				)
+			}
+		}
+
+/*
+ * ============================================================
+ * FLATPAK CONFIGURATION
+ * ============================================================
+ */
+
+def flatpakAppId =
+		"org.teamzetaverse.ABNWLauncher"
+
+def flatpakRoot =
+		layout
+				.buildDirectory
+				.dir("flatpak")
+
+def flatpakContext =
+		flatpakRoot.map {
+			it.dir("context")
+		}
+
+def flatpakBuildDirectory =
+		flatpakRoot.map {
+			it.dir("build")
+		}
+
+def flatpakRepository =
+		flatpakRoot.map {
+			it.dir("repo")
+		}
+
+def flatpakBundle =
+		layout
+				.buildDirectory
+				.file(
+						"distributions/" +
+								"ABNW Launcher-${version}.flatpak"
+				)
+
+def flatpakManifest =
+		file(
+				"flatpak/${flatpakAppId}.yml"
+		)
+
+def flatpakWslRoot =
+		(
+				project.findProperty(
+						"flatpakWslRoot"
+				)
+						?:
+						System.getenv(
+								"ABNW_FLATPAK_WSL_ROOT"
+						)
+								?:
+								""
+		)
+				.toString()
+				.trim()
+
+/*
+ * ============================================================
+ * PLATFORM HELPERS
+ * ============================================================
+ */
 
 def isLinuxHost = {
-	System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux")
+	System
+			.getProperty("os.name")
+			.toLowerCase(Locale.ROOT)
+			.contains("linux")
 }
 
 def isWindowsHost = {
-	System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")
+	System
+			.getProperty("os.name")
+			.toLowerCase(Locale.ROOT)
+			.contains("windows")
 }
 
-def requireFlatpakCommand = { String command ->
-	def path = System.getenv("PATH") ?: ""
-	def executable = path.split(java.util.regex.Pattern.quote(File.pathSeparator))
-		.collect { new File(it, command) }
-		.find { it.isFile() && it.canExecute() }
-	if (executable == null) {
-		throw new GradleException("Could not find ${command}. Install flatpak-builder and Flatpak, then run :launcher:flatpak on Linux.")
-	}
-	executable
+/*
+ * ============================================================
+ * NATIVE LINUX FLATPAK COMMAND LOOKUP
+ * ============================================================
+ */
+
+def requireFlatpakCommand = {
+	String command ->
+
+		def path =
+				System.getenv("PATH")
+						?: ""
+
+		def executable =
+				path
+						.split(
+								java.util.regex.Pattern.quote(
+										File.pathSeparator
+								)
+						)
+						.collect {
+							new File(
+									it,
+									command
+							)
+						}
+						.find {
+							it.isFile() &&
+									it.canExecute()
+						}
+
+		if (executable == null) {
+			throw new GradleException(
+					"Could not find ${command}. " +
+							"Install flatpak-builder and Flatpak, " +
+							"then run :launcher:flatpak on Linux."
+			)
+		}
+
+		executable
 }
 
-def flatpakContextTask = tasks.register("prepareFlatpakContext", Sync) {
+/*
+ * ============================================================
+ * FLATPAK CONTEXT
+ * ============================================================
+ */
+
+def flatpakContextTask =
+		tasks.register(
+				"prepareFlatpakContext",
+				Sync
+		) {
+
+			group = "distribution"
+
+			description =
+					"Stages the launcher JAR and ABNW icons for Flatpak."
+
+			dependsOn(
+					tasks.shadowJar
+			)
+
+			into(
+					flatpakContext
+			)
+
+			from(
+					tasks.shadowJar
+			) {
+				rename {
+					"launcher.jar"
+				}
+			}
+
+			from("flatpak") {
+				include(
+						"launch-abnw-launcher.sh"
+				)
+
+				include(
+						"${flatpakAppId}.desktop"
+				)
+			}
+
+			from(
+					"src/main/resources/assets/icon_16.png"
+			) {
+				into(
+						"icons/16x16/apps"
+				)
+
+				rename {
+					"${flatpakAppId}.png"
+				}
+			}
+
+			from(
+					"src/main/resources/assets/icon_32.png"
+			) {
+				into(
+						"icons/32x32/apps"
+				)
+
+				rename {
+					"${flatpakAppId}.png"
+				}
+			}
+
+			from(
+					"src/main/resources/assets/icon_48.png"
+			) {
+				into(
+						"icons/48x48/apps"
+				)
+
+				rename {
+					"${flatpakAppId}.png"
+				}
+			}
+
+			from(
+					"src/main/resources/assets/icon_256.png"
+			) {
+				into(
+						"icons/256x256/apps"
+				)
+
+				rename {
+					"${flatpakAppId}.png"
+				}
+			}
+		}
+
+/*
+ * ============================================================
+ * NATIVE LINUX FLATPAK BUILD
+ * ============================================================
+ */
+
+tasks.register(
+		"flatpakBuild",
+		Exec
+) {
+
 	group = "distribution"
-	description = "Stages the launcher JAR and ABNW icons for Flatpak."
-	dependsOn(tasks.shadowJar)
-	into(flatpakContext)
-	from(tasks.shadowJar) {
-		rename { "launcher.jar" }
-	}
-	from("flatpak") {
-		include("launch-abnw-launcher.sh")
-		include("${flatpakAppId}.desktop")
-	}
-	from("src/main/resources/assets/icon_16.png") {
-		into("icons/16x16/apps")
-		rename { "${flatpakAppId}.png" }
-	}
-	from("src/main/resources/assets/icon_32.png") {
-		into("icons/32x32/apps")
-		rename { "${flatpakAppId}.png" }
-	}
-	from("src/main/resources/assets/icon_48.png") {
-		into("icons/48x48/apps")
-		rename { "${flatpakAppId}.png" }
-	}
-	from("src/main/resources/assets/icon_256.png") {
-		into("icons/256x256/apps")
-		rename { "${flatpakAppId}.png" }
-	}
-}
 
-tasks.register("flatpakBuild", Exec) {
-	group = "distribution"
-	description = "Builds the ABNW Launcher Flatpak repository. Requires Linux flatpak-builder."
-	dependsOn(flatpakContextTask)
-	inputs.file(flatpakManifest)
-	inputs.dir(flatpakContext)
-	outputs.dir(flatpakRepository)
+	description =
+			"Builds the ABNW Launcher Flatpak repository. " +
+					"Requires Linux flatpak-builder."
+
+	dependsOn(
+			flatpakContextTask
+	)
+
+	inputs.file(
+			flatpakManifest
+	)
+
+	inputs.dir(
+			flatpakContext
+	)
+
+	outputs.dir(
+			flatpakRepository
+	)
+
+	outputs.upToDateWhen {
+		!(
+				project.findProperty(
+						"flatpakFullClean"
+				)
+						?.toString()
+						?.toBoolean()
+						?:
+						false
+		)
+	}
 
 	doFirst {
-		if (!System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux")) {
-			throw new GradleException("The Flatpak task must run on Linux with flatpak-builder installed.")
+		if (!isLinuxHost()) {
+			throw new GradleException(
+					"The Flatpak task must run on Linux " +
+							"with flatpak-builder installed."
+			)
 		}
-		def builder = requireFlatpakCommand("flatpak-builder")
-		flatpakBuildDirectory.get().asFile.mkdirs()
-		flatpakRepository.get().asFile.mkdirs()
-		commandLine(builder.absolutePath,
-			"--force-clean",
-			"--repo=${flatpakRepository.get().asFile.absolutePath}",
-			flatpakBuildDirectory.get().asFile.absolutePath,
-			flatpakManifest.absolutePath)
+
+		def builder =
+				requireFlatpakCommand(
+						"flatpak-builder"
+				)
+
+		def fullClean =
+				project.findProperty(
+						"flatpakFullClean"
+				)
+						?.toString()
+						?.toBoolean()
+						?:
+						false
+
+		if (fullClean) {
+			project.delete(
+					flatpakBuildDirectory
+							.get()
+							.asFile,
+
+					flatpakRepository
+							.get()
+							.asFile
+			)
+		}
+
+		flatpakBuildDirectory
+				.get()
+				.asFile
+				.mkdirs()
+
+		flatpakRepository
+				.get()
+				.asFile
+				.mkdirs()
+
+		def arguments = [
+				builder.absolutePath,
+				"--verbose",
+				"--default-branch=${version}"
+		]
+
+		if (fullClean) {
+			arguments <<
+					"--force-clean"
+		}
+
+		arguments += [
+				"--repo=" +
+						flatpakRepository
+								.get()
+								.asFile
+								.absolutePath,
+
+				flatpakBuildDirectory
+						.get()
+						.asFile
+						.absolutePath,
+
+				flatpakManifest
+						.absolutePath
+		]
+
+		commandLine(
+				arguments
+		)
 	}
 }
+
+/*
+ * ============================================================
+ * WSL HELPERS
+ * ============================================================
+ */
 
 def findWsl = {
-	def systemRoot = System.getenv("SystemRoot") ?: "C:\\Windows"
+	def systemRoot =
+			System.getenv(
+					"SystemRoot"
+			)
+					?:
+					"C:\\Windows"
+
 	def candidates = [
-		new File(systemRoot, "System32/wsl.exe"),
-		new File(systemRoot, "Sysnative/wsl.exe")
+			new File(
+					systemRoot,
+					"System32/wsl.exe"
+			),
+
+			new File(
+					systemRoot,
+					"Sysnative/wsl.exe"
+			)
 	]
-	def executable = candidates.find { it.isFile() }
+
+	def executable =
+			candidates.find {
+				it.isFile()
+			}
+
 	if (executable == null) {
-		throw new GradleException("Could not find wsl.exe. Install and initialize an Ubuntu WSL distribution before building the Flatpak.")
+		throw new GradleException(
+				"Could not find wsl.exe. " +
+						"Install and initialize an Ubuntu WSL distribution " +
+						"before building the Flatpak."
+		)
 	}
+
 	executable
 }
 
-def windowsPathToWsl = { File directory ->
-	def absolute = directory.absoluteFile.absolutePath
-	if (!(absolute ==~ /[A-Za-z]:[\\\\].*/)) {
-		throw new GradleException("The WSL Flatpak build needs a drive-letter workspace path, got ${absolute}.")
-	}
-	def drive = absolute.substring(0, 1).toLowerCase(Locale.ROOT)
-	def rest = absolute.substring(2).replace('\\' as char, '/' as char)
-	"/mnt/${drive}${rest.startsWith('/') ? rest : '/' + rest}"
-}
+def windowsPathToWsl = {
+	File directory ->
 
-def flatpakBundleTask = tasks.register("flatpakBundle", Exec) {
-	group = "distribution"
-	description = "Builds the ABNW Launcher Flatpak bundle. Requires Linux flatpak-builder and Flatpak."
-	dependsOn("flatpakBuild")
-	inputs.dir(flatpakRepository)
-	outputs.file(flatpakBundle)
+		def absolute =
+				directory
+						.absoluteFile
+						.absolutePath
 
-	doFirst {
-		if (!System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux")) {
-			throw new GradleException("The Flatpak task must run on Linux with flatpak-builder installed.")
+		if (
+				!(absolute ==~ /[A-Za-z]:[\\\\].*/)
+		) {
+			throw new GradleException(
+					"The WSL Flatpak build needs a drive-letter " +
+							"workspace path, got ${absolute}."
+			)
 		}
-		def flatpak = requireFlatpakCommand("flatpak")
-		flatpakBundle.get().asFile.parentFile.mkdirs()
-		project.delete(flatpakBundle.get().asFile)
-		commandLine(flatpak.absolutePath,
-			"build-bundle",
-			"--runtime-repo=https://flathub.org/repo/flathub.flatpakrepo",
-			flatpakRepository.get().asFile.absolutePath,
-			flatpakBundle.get().asFile.absolutePath,
-			flatpakAppId,
-			version.toString())
-	}
+
+		def drive =
+				absolute
+						.substring(0, 1)
+						.toLowerCase(Locale.ROOT)
+
+		def rest =
+				absolute
+						.substring(2)
+						.replace(
+								'\\' as char,
+								'/' as char
+						)
+
+		"/mnt/${drive}" +
+				(
+						rest.startsWith("/")
+								? rest
+								: "/" + rest
+				)
 }
 
-def flatpakLinuxTask = tasks.register("flatpakLinux") {
-	group = "distribution"
-	description = "Builds the ABNW Launcher Flatpak inside a Linux environment."
-	dependsOn(flatpakBundleTask)
+/*
+ * ============================================================
+ * WSL COMMAND INVOCATION
+ * ============================================================
+ */
+
+def invokeWsl = {
+	List<?> toolArguments,
+	String toolName,
+	String workingDirectory = null ->
+
+		if (!isWindowsHost()) {
+			throw new GradleException(
+					"WSL Flatpak commands can only be invoked from Windows."
+			)
+		}
+
+		def wsl =
+				findWsl()
+
+		def wslDistribution =
+				(
+						System.getenv(
+								"ABNW_WSL_DISTRIBUTION"
+						)
+								?:
+								""
+				)
+						.trim()
+
+		List<String> wslCommand =
+				new ArrayList<>()
+
+		wslCommand.add(
+				String.valueOf(
+						wsl.absolutePath
+				)
+		)
+
+		if (
+				!wslDistribution.isEmpty()
+		) {
+			wslCommand.add(
+					"--distribution"
+			)
+
+			wslCommand.add(
+					wslDistribution
+			)
+		}
+
+		wslCommand.add(
+				"--cd"
+		)
+
+		wslCommand.add(
+				workingDirectory
+						?:
+						windowsPathToWsl(
+								project.projectDir
+						).toString()
+		)
+
+		wslCommand.add(
+				"--"
+		)
+
+		toolArguments.each {
+			argument ->
+
+				wslCommand.add(
+						String.valueOf(
+								argument
+						)
+				)
+		}
+
+		String[] wslCommandArray =
+				new String[
+						wslCommand.size()
+						]
+
+		wslCommand.toArray(
+				wslCommandArray
+		)
+
+		println(
+				"[ABNW Flatpak] Running WSL ${toolName}..."
+		)
+
+		def startedAt =
+				System.nanoTime()
+
+		def wslProcess =
+				new ProcessBuilder(
+						wslCommandArray
+				)
+						.directory(
+								project.projectDir
+						)
+						.redirectErrorStream(
+								true
+						)
+						.start()
+
+		def output =
+				new StringBuilder()
+
+		wslProcess
+				.inputStream
+				.withReader(
+						"UTF-8"
+				) { reader ->
+
+					String line
+
+					while (
+							(
+									line =
+											reader.readLine()
+							) != null
+					) {
+						output
+								.append(line)
+								.append(
+										System.lineSeparator()
+								)
+
+						println(
+								"[ABNW Flatpak][${toolName}] ${line}"
+						)
+					}
+				}
+
+		def wslExitCode =
+				wslProcess.waitFor()
+
+		def wslLogName =
+				toolName.replaceAll(
+						"[^A-Za-z0-9_.-]",
+						"_"
+				)
+
+		def wslLog =
+				new File(
+						flatpakRoot
+								.get()
+								.asFile,
+
+						"wsl-${wslLogName}.log"
+				)
+
+		wslLog
+				.parentFile
+				.mkdirs()
+
+		wslLog.setText(
+				output.toString(),
+				"UTF-8"
+		)
+
+		def elapsedNanos =
+				System.nanoTime() -
+						startedAt
+
+		if (
+				wslExitCode != 0
+		) {
+			if (
+					wslExitCode == 127
+			) {
+				throw new GradleException(
+						"WSL could not find ${toolName}. " +
+								"Install Flatpak and flatpak-builder " +
+								"in the selected WSL distribution."
+				)
+			}
+
+			def outputLines =
+					output
+							.toString()
+							.readLines()
+
+			def tail =
+					outputLines
+							.takeRight(80)
+							.join(
+									System.lineSeparator()
+							)
+
+			throw new GradleException(
+					"The WSL ${toolName} command failed " +
+							"with exit code ${wslExitCode}. " +
+							"Full output: ${wslLog}\n" +
+							"Last output:\n${tail}"
+			)
+		}
+
+		[
+				output:
+						output.toString(),
+
+				elapsedNanos:
+						elapsedNanos
+		]
 }
 
-tasks.register("flatpak") {
+/*
+ * ============================================================
+ * CREATE TEMPORARY WSL SCRIPTS
+ *
+ * Important:
+ * Bash is stored in generated .sh files instead of
+ * embedded Groovy ''' strings.
+ * ============================================================
+ */
+
+def createWslScript = {
+	String name,
+	List<String> lines ->
+
+		def scriptDirectory =
+				new File(
+						flatpakRoot
+								.get()
+								.asFile,
+
+						"wsl-scripts"
+				)
+
+		scriptDirectory.mkdirs()
+
+		def script =
+				new File(
+						scriptDirectory,
+						"${name}.sh"
+				)
+
+		script.setText(
+				lines.join("\n") + "\n",
+				"UTF-8"
+		)
+
+		windowsPathToWsl(
+				script
+		).toString()
+}
+
+/*
+ * ============================================================
+ * NATIVE LINUX FLATPAK BUNDLE
+ * ============================================================
+ */
+
+def flatpakBundleTask =
+		tasks.register(
+				"flatpakBundle",
+				Exec
+		) {
+
+			group = "distribution"
+
+			description =
+					"Builds the ABNW Launcher Flatpak bundle. " +
+							"Requires Linux flatpak-builder and Flatpak."
+
+			dependsOn(
+					"flatpakBuild"
+			)
+
+			inputs.dir(
+					flatpakRepository
+			)
+
+			outputs.file(
+					flatpakBundle
+			)
+
+			doFirst {
+				if (!isLinuxHost()) {
+					throw new GradleException(
+							"The Flatpak task must run on Linux " +
+									"with flatpak-builder installed."
+					)
+				}
+
+				def flatpak =
+						requireFlatpakCommand(
+								"flatpak"
+						)
+
+				flatpakBundle
+						.get()
+						.asFile
+						.parentFile
+						.mkdirs()
+
+				project.delete(
+						flatpakBundle
+								.get()
+								.asFile
+				)
+
+				commandLine(
+						flatpak.absolutePath,
+
+						"build-bundle",
+
+						"--runtime-repo=" +
+								"https://flathub.org/repo/flathub.flatpakrepo",
+
+						flatpakRepository
+								.get()
+								.asFile
+								.absolutePath,
+
+						flatpakBundle
+								.get()
+								.asFile
+								.absolutePath,
+
+						flatpakAppId,
+
+						version.toString()
+				)
+			}
+		}
+
+/*
+ * ============================================================
+ * NATIVE LINUX ENTRY TASK
+ * ============================================================
+ */
+
+def flatpakLinuxTask =
+		tasks.register(
+				"flatpakLinux"
+		) {
+
+			group = "distribution"
+
+			description =
+					"Builds the ABNW Launcher Flatpak inside a Linux environment."
+
+			dependsOn(
+					flatpakBundleTask
+			)
+		}
+
+/*
+ * ============================================================
+ * CROSS-PLATFORM FLATPAK ENTRY TASK
+ * ============================================================
+ */
+
+tasks.register(
+		"flatpak"
+) {
+
 	group = "distribution"
-	description = "Builds the ABNW Launcher Flatpak, using WSL automatically on Windows."
+
+	description =
+			"Builds the ABNW Launcher Flatpak, " +
+					"using WSL automatically on Windows."
+
 	if (isLinuxHost()) {
-		dependsOn(flatpakLinuxTask)
-	} else if (isWindowsHost()) {
-		// Stage the JAR and icons on Windows, then let WSL run the Linux-only
-		// Flatpak tools directly. Gradle itself does not need to be installed in WSL.
-		dependsOn(flatpakContextTask)
-	} else if (!isWindowsHost()) {
+		dependsOn(
+				flatpakLinuxTask
+		)
+
+	} else if (
+			isWindowsHost()
+	) {
+		dependsOn(
+				flatpakContextTask
+		)
+
+	} else {
 		doLast {
-			throw new GradleException("The Flatpak task requires Linux or Windows with an initialized WSL distribution.")
+			throw new GradleException(
+					"The Flatpak task requires Linux " +
+							"or Windows with an initialized WSL distribution."
+			)
 		}
 	}
-	inputs.file(flatpakManifest)
-	inputs.file(tasks.shadowJar.archiveFile)
-	inputs.files(
-		"flatpak/launch-abnw-launcher.sh",
-		"flatpak/${flatpakAppId}.desktop",
-		"src/main/resources/assets/icon_16.png",
-		"src/main/resources/assets/icon_32.png",
-		"src/main/resources/assets/icon_48.png",
-		"src/main/resources/assets/icon_256.png"
+
+	inputs.file(
+			flatpakManifest
 	)
-	outputs.file(flatpakBundle)
+
+	inputs.file(
+			tasks
+					.shadowJar
+					.archiveFile
+	)
+
+	inputs.files(
+			"flatpak/launch-abnw-launcher.sh",
+			"flatpak/${flatpakAppId}.desktop",
+			"src/main/resources/assets/icon_16.png",
+			"src/main/resources/assets/icon_32.png",
+			"src/main/resources/assets/icon_48.png",
+			"src/main/resources/assets/icon_256.png"
+	)
+
+	outputs.file(
+			flatpakBundle
+	)
+
+	outputs.upToDateWhen {
+		!(
+				project.findProperty(
+						"flatpakFullClean"
+				)
+						?.toString()
+						?.toBoolean()
+						?:
+						false
+		)
+	}
 
 	doLast {
 		if (!isWindowsHost()) {
 			return
 		}
-		def wsl = findWsl()
-		def wslDistribution = (System.getenv("ABNW_WSL_DISTRIBUTION") ?: "").trim()
-		def invokeWsl = { List<?> toolArguments, String toolName ->
-			List<String> wslCommand = new ArrayList<>()
-			wslCommand.add(String.valueOf(wsl.absolutePath))
-			if (!wslDistribution.isEmpty()) {
-				wslCommand.add("--distribution")
-				wslCommand.add(wslDistribution)
-			}
-			wslCommand.add("--cd")
-			wslCommand.add(windowsPathToWsl(project.projectDir).toString())
-			wslCommand.add("--")
-			toolArguments.each { argument ->
-				wslCommand.add(String.valueOf(argument))
-			}
-			String[] wslCommandArray = new String[wslCommand.size()]
-			wslCommand.toArray(wslCommandArray)
-			def wslProcess = new ProcessBuilder(wslCommandArray)
-				.directory(project.projectDir)
-				.redirectErrorStream(true)
-				.start()
-			def wslOutput = wslProcess.inputStream.getText("UTF-8")
-			def wslExitCode = wslProcess.waitFor()
-			def wslLog = new File(flatpakRoot.get().asFile, "wsl-${toolName}.log")
-			wslLog.parentFile.mkdirs()
-			wslLog.setText(wslOutput, "UTF-8")
-			if (wslExitCode != 0) {
-				if (wslExitCode == 127) {
-					throw new GradleException("WSL could not find ${toolName}. Install ${toolName} in the selected WSL distribution.")
-				}
-				def outputLines = wslOutput.readLines()
-				def tail = outputLines.takeRight(80).join(System.lineSeparator())
-				throw new GradleException("The WSL ${toolName} command failed with exit code ${wslExitCode}. Full output: ${wslLog}\nLast output:\n${tail}")
-			}
+
+		def wslContext =
+				windowsPathToWsl(
+						flatpakContext
+								.get()
+								.asFile
+				)
+						.toString()
+
+		def wslManifest =
+				windowsPathToWsl(
+						flatpakManifest
+				)
+						.toString()
+
+		def wslBundle =
+				windowsPathToWsl(
+						flatpakBundle
+								.get()
+								.asFile
+				)
+						.toString()
+
+		def fullClean =
+				project.findProperty(
+						"flatpakFullClean"
+				)
+						?.toString()
+						?.toBoolean()
+						?:
+						false
+
+		def timings =
+				new LinkedHashMap<
+						String,
+						Long
+						>()
+
+		def formatDuration = {
+			long nanos ->
+
+				def millis =
+						Math.round(
+								nanos /
+										1_000_000d
+						)
+
+				millis < 1000
+						?
+						"${millis}ms"
+						:
+						String.format(
+								Locale.ROOT,
+								"%.2fs",
+								nanos /
+										1_000_000_000d
+						)
 		}
 
-		project.delete(flatpakBuildDirectory.get().asFile, flatpakRepository.get().asFile, flatpakBundle.get().asFile)
-		def wslManifest = windowsPathToWsl(flatpakManifest).toString()
-		def wslBuildDirectory = windowsPathToWsl(flatpakBuildDirectory.get().asFile).toString()
-		def wslRepository = windowsPathToWsl(flatpakRepository.get().asFile).toString()
-		def wslBundle = windowsPathToWsl(flatpakBundle.get().asFile).toString()
-		// The SDK and runtime live inside the selected WSL distribution. Install the
-		// exact refs required by the manifest before invoking flatpak-builder. The
-		// install is idempotent, so subsequent builds finish immediately when the
-		// refs are already present.
-		invokeWsl([
-			"flatpak",
-			"remote-add",
-			"--user",
-			"--if-not-exists",
-			"flathub",
-			"https://flathub.org/repo/flathub.flatpakrepo"
-		], "flatpak-remote")
-		invokeWsl([
-			"flatpak",
-			"install",
-			"--user",
-			"--assumeyes",
-			"--or-update",
-			"flathub",
-			"org.freedesktop.Platform//24.08",
-			"org.freedesktop.Sdk//24.08",
-			"org.freedesktop.Sdk.Extension.openjdk21//24.08"
-		], "flatpak-install")
-		invokeWsl([
-			"flatpak-builder",
-			"--force-clean",
-			"--verbose",
-			"--repo=${wslRepository}",
-			wslBuildDirectory,
-			wslManifest
-		], "flatpak-builder")
-		invokeWsl([
-			"flatpak",
-			"build-bundle",
-			"--runtime-repo=https://flathub.org/repo/flathub.flatpakrepo",
-			wslRepository,
-			wslBundle,
-			flatpakAppId,
-			version.toString()
-		], "flatpak")
-		if (!flatpakBundle.get().asFile.isFile()) {
-			throw new GradleException("WSL completed without producing ${flatpakBundle.get().asFile}.")
+		def runStage = {
+			String label,
+			Closure action ->
+
+				println(
+						"[ABNW Flatpak] ${label}..."
+				)
+
+				def startedAt =
+						System.nanoTime()
+
+				def result =
+						action.call()
+
+				def elapsedNanos =
+						System.nanoTime() -
+								startedAt
+
+				timings[label] =
+						elapsedNanos
+
+				println(
+						"[ABNW Flatpak] ${label} complete " +
+								"(${formatDuration(elapsedNanos)})"
+				)
+
+				result
+		}
+
+		def totalStartedAt =
+				System.nanoTime()
+
+		/*
+         * --------------------------------------------------------
+         * SYNC SOURCES INTO WSL NATIVE FILESYSTEM
+         * --------------------------------------------------------
+         */
+
+		runStage(
+				"Syncing sources"
+		) {
+
+			def script =
+					createWslScript(
+							"source-sync",
+							[
+									"#!/usr/bin/env bash",
+									"set -eu",
+									"",
+									'requested_root="$1"',
+									'app_id="$2"',
+									'source_context="$3"',
+									'source_manifest="$4"',
+									"",
+									'if [ -z "$requested_root" ]; then',
+									'  requested_root="$HOME/abnw-flatpak-build"',
+									"fi",
+									"",
+									'case "$requested_root" in',
+									'  "~") requested_root="$HOME" ;;',
+									'  "~/"*) requested_root="$HOME/${requested_root#~/}" ;;',
+									'  /*) ;;',
+									'  *) requested_root="$HOME/$requested_root" ;;',
+									"esac",
+									"",
+									'case "$requested_root" in',
+									'  /mnt/*)',
+									'    echo "ERROR: Flatpak workspace is on a Windows-mounted filesystem: $requested_root"',
+									'    echo "Use a WSL-native path such as ~/abnw-flatpak-build"',
+									"    exit 2",
+									"    ;;",
+									"esac",
+									"",
+									'mkdir -p "$requested_root"',
+									"",
+									'resolved_root="$(readlink -f "$requested_root")"',
+									"",
+									'case "$resolved_root" in',
+									'  /mnt/*)',
+									'    echo "ERROR: Flatpak workspace resolves to a Windows-mounted filesystem: $resolved_root"',
+									"    exit 2",
+									"    ;;",
+									"esac",
+									"",
+									'workspace="$resolved_root/$app_id"',
+									"",
+									'echo "Using WSL-native workspace: $workspace"',
+									"",
+									'mkdir -p "$workspace/flatpak"',
+									'mkdir -p "$workspace/build/flatpak"',
+									"",
+									'rm -rf "$workspace/build/flatpak/context.next"',
+									'mkdir -p "$workspace/build/flatpak/context.next"',
+									"",
+									'cp -a "$source_context/." "$workspace/build/flatpak/context.next/"',
+									"",
+									'rm -rf "$workspace/build/flatpak/context"',
+									'mv "$workspace/build/flatpak/context.next" "$workspace/build/flatpak/context"',
+									"",
+									'cp "$source_manifest" "$workspace/flatpak/$app_id.yml"'
+							]
+					)
+
+			invokeWsl(
+					[
+							"bash",
+							script,
+							flatpakWslRoot,
+							flatpakAppId,
+							wslContext,
+							wslManifest
+					],
+					"source-sync"
+			)
+		}
+
+		/*
+         * --------------------------------------------------------
+         * DEPENDENCIES
+         * --------------------------------------------------------
+         */
+
+		runStage(
+				"Installing or validating dependencies"
+		) {
+
+			def script =
+					createWslScript(
+							"dependency-setup",
+							[
+									"#!/usr/bin/env bash",
+									"set -eu",
+									"",
+									'requested_root="$1"',
+									'app_id="$2"',
+									"",
+									'if [ -z "$requested_root" ]; then',
+									'  requested_root="$HOME/abnw-flatpak-build"',
+									"fi",
+									"",
+									'case "$requested_root" in',
+									'  "~") requested_root="$HOME" ;;',
+									'  "~/"*) requested_root="$HOME/${requested_root#~/}" ;;',
+									'  /*) ;;',
+									'  *) requested_root="$HOME/$requested_root" ;;',
+									"esac",
+									"",
+									'case "$requested_root" in',
+									'  /mnt/*)',
+									'    echo "ERROR: Flatpak workspace cannot be under /mnt/"',
+									"    exit 2",
+									"    ;;",
+									"esac",
+									"",
+									"flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo",
+									"",
+									"missing=()",
+									"",
+									"for ref in \\",
+									"  org.freedesktop.Platform//24.08 \\",
+									"  org.freedesktop.Sdk//24.08 \\",
+									"  org.freedesktop.Sdk.Extension.openjdk21//24.08",
+									"do",
+									'  if ! flatpak info --user "$ref" >/dev/null 2>&1 && ! flatpak info --system "$ref" >/dev/null 2>&1; then',
+									'    missing+=("$ref")',
+									"  fi",
+									"done",
+									"",
+									'if [ "${#missing[@]}" -gt 0 ]; then',
+									'  echo "Installing missing Flatpak refs: ${missing[*]}"',
+									'  flatpak install --user --assumeyes flathub "${missing[@]}"',
+									"else",
+									'  echo "All required Flatpak refs are already installed."',
+									'  echo "Flatpak caches will be preserved."',
+									"fi"
+							]
+					)
+
+			invokeWsl(
+					[
+							"bash",
+							script,
+							flatpakWslRoot,
+							flatpakAppId
+					],
+					"dependency-setup"
+			)
+		}
+
+		/*
+         * --------------------------------------------------------
+         * BUILD
+         * --------------------------------------------------------
+         */
+
+		runStage(
+				"Building launcher"
+		) {
+
+			def script =
+					createWslScript(
+							"flatpak-builder",
+							[
+									"#!/usr/bin/env bash",
+									"set -eu",
+									"",
+									'requested_root="$1"',
+									'app_id="$2"',
+									'full_clean="$3"',
+									"",
+									'if [ -z "$requested_root" ]; then',
+									'  requested_root="$HOME/abnw-flatpak-build"',
+									"fi",
+									"",
+									'case "$requested_root" in',
+									'  "~") requested_root="$HOME" ;;',
+									'  "~/"*) requested_root="$HOME/${requested_root#~/}" ;;',
+									'  /*) ;;',
+									'  *) requested_root="$HOME/$requested_root" ;;',
+									"esac",
+									"",
+									'case "$requested_root" in',
+									'  /mnt/*)',
+									'    echo "ERROR: Flatpak workspace cannot be under /mnt/"',
+									"    exit 2",
+									"    ;;",
+									"esac",
+									"",
+									'workspace="$requested_root/$app_id"',
+									'build_dir="$workspace/flatpak-build"',
+									'manifest="$workspace/flatpak/$app_id.yml"',
+									"",
+									'cd "$workspace"',
+									"",
+									'if [ "$full_clean" = "1" ]; then',
+									'  echo "Full Flatpak clean requested."',
+									'  rm -rf "$build_dir"',
+									'  rm -rf "$workspace/flatpak-repo"',
+									"fi",
+									"",
+									"builder_args=(--verbose)",
+									"",
+									'if [ "$full_clean" = "1" ]; then',
+									"  builder_args+=(--force-clean)",
+									"fi",
+									"",
+									'flatpak-builder "${builder_args[@]}" "$build_dir" "$manifest"'
+							]
+					)
+
+			invokeWsl(
+					[
+							"bash",
+							script,
+							flatpakWslRoot,
+							flatpakAppId,
+							fullClean
+									? "1"
+									: "0"
+					],
+					"flatpak-builder"
+			)
+		}
+
+		/*
+         * --------------------------------------------------------
+         * EXPORT REPOSITORY
+         * --------------------------------------------------------
+         */
+
+		runStage(
+				"Exporting repository"
+		) {
+
+			def script =
+					createWslScript(
+							"repository-export",
+							[
+									"#!/usr/bin/env bash",
+									"set -eu",
+									"",
+									'requested_root="$1"',
+									'app_id="$2"',
+									'app_version="$3"',
+									"",
+									'if [ -z "$requested_root" ]; then',
+									'  requested_root="$HOME/abnw-flatpak-build"',
+									"fi",
+									"",
+									'case "$requested_root" in',
+									'  "~") requested_root="$HOME" ;;',
+									'  "~/"*) requested_root="$HOME/${requested_root#~/}" ;;',
+									'  /*) ;;',
+									'  *) requested_root="$HOME/$requested_root" ;;',
+									"esac",
+									"",
+									'workspace="$requested_root/$app_id"',
+									"",
+									'cd "$workspace"',
+									"",
+									'mkdir -p "$workspace/flatpak-repo"',
+									"",
+									"flatpak build-export \\",
+									'  "$workspace/flatpak-repo" \\',
+									'  "$workspace/flatpak-build" \\',
+									'  "$app_version"'
+							]
+					)
+
+			invokeWsl(
+					[
+							"bash",
+							script,
+							flatpakWslRoot,
+							flatpakAppId,
+							version.toString()
+					],
+					"repository-export"
+			)
+		}
+
+		/*
+         * --------------------------------------------------------
+         * CREATE BUNDLE
+         * --------------------------------------------------------
+         */
+
+		runStage(
+				"Creating bundle"
+		) {
+
+			def script =
+					createWslScript(
+							"bundle",
+							[
+									"#!/usr/bin/env bash",
+									"set -eu",
+									"",
+									'requested_root="$1"',
+									'app_id="$2"',
+									'app_version="$3"',
+									"",
+									'if [ -z "$requested_root" ]; then',
+									'  requested_root="$HOME/abnw-flatpak-build"',
+									"fi",
+									"",
+									'case "$requested_root" in',
+									'  "~") requested_root="$HOME" ;;',
+									'  "~/"*) requested_root="$HOME/${requested_root#~/}" ;;',
+									'  /*) ;;',
+									'  *) requested_root="$HOME/$requested_root" ;;',
+									"esac",
+									"",
+									'workspace="$requested_root/$app_id"',
+									"",
+									'cd "$workspace"',
+									"",
+									'artifact="$workspace/ABNW Launcher-$app_version.flatpak"',
+									"",
+									'rm -f "$artifact"',
+									"",
+									"flatpak build-bundle \\",
+									"  --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo \\",
+									'  "$workspace/flatpak-repo" \\',
+									'  "$artifact" \\',
+									'  "$app_id" \\',
+									'  "$app_version"',
+									"",
+									'test -s "$artifact"'
+							]
+					)
+
+			invokeWsl(
+					[
+							"bash",
+							script,
+							flatpakWslRoot,
+							flatpakAppId,
+							version.toString()
+					],
+					"bundle"
+			)
+		}
+
+		/*
+         * --------------------------------------------------------
+         * COPY ARTIFACT BACK TO WINDOWS
+         * --------------------------------------------------------
+         */
+
+		runStage(
+				"Copying artifact to Windows"
+		) {
+
+			def script =
+					createWslScript(
+							"copy-artifact",
+							[
+									"#!/usr/bin/env bash",
+									"set -eu",
+									"",
+									'requested_root="$1"',
+									'app_id="$2"',
+									'app_version="$3"',
+									'windows_artifact="$4"',
+									"",
+									'if [ -z "$requested_root" ]; then',
+									'  requested_root="$HOME/abnw-flatpak-build"',
+									"fi",
+									"",
+									'case "$requested_root" in',
+									'  "~") requested_root="$HOME" ;;',
+									'  "~/"*) requested_root="$HOME/${requested_root#~/}" ;;',
+									'  /*) ;;',
+									'  *) requested_root="$HOME/$requested_root" ;;',
+									"esac",
+									"",
+									'workspace="$requested_root/$app_id"',
+									'artifact="$workspace/ABNW Launcher-$app_version.flatpak"',
+									"",
+									'test -s "$artifact"',
+									"",
+									'mkdir -p "$(dirname "$windows_artifact")"',
+									'cp -f "$artifact" "$windows_artifact"'
+							]
+					)
+
+			invokeWsl(
+					[
+							"bash",
+							script,
+							flatpakWslRoot,
+							flatpakAppId,
+							version.toString(),
+							wslBundle
+					],
+					"copy-artifact"
+			)
+		}
+
+		/*
+         * --------------------------------------------------------
+         * TIMINGS
+         * --------------------------------------------------------
+         */
+
+		def totalElapsedNanos =
+				System.nanoTime() -
+						totalStartedAt
+
+		println(
+				"[ABNW Flatpak] Timing breakdown:"
+		)
+
+		timings.each {
+			label,
+			elapsedNanos ->
+
+				println(
+						String.format(
+								Locale.ROOT,
+								"  %-34s %s",
+								"${label}:",
+								formatDuration(
+										elapsedNanos
+								)
+						)
+				)
+		}
+
+		println(
+				String.format(
+						Locale.ROOT,
+						"  %-34s %s",
+						"Total:",
+						formatDuration(
+								totalElapsedNanos
+						)
+				)
+		)
+
+		if (
+				!flatpakBundle
+						.get()
+						.asFile
+						.isFile()
+		) {
+			throw new GradleException(
+					"WSL completed without producing " +
+							"${flatpakBundle.get().asFile}."
+			)
 		}
 	}
 }
 
-tasks.build {
-	dependsOn tasks.shadowJar, linuxZip
+/*
+ * ============================================================
+ * CLEAN FLATPAK BUILD
+ * ============================================================
+ */
+
+tasks.register(
+		"cleanFlatpakBuild"
+) {
+
+	group = "distribution"
+
+	description =
+			"Removes disposable Flatpak build and repository state " +
+					"while preserving WSL Flatpak caches."
+
+	doLast {
+		if (
+				isWindowsHost()
+		) {
+			project.delete(
+					flatpakBundle
+							.get()
+							.asFile
+			)
+
+			def script =
+					createWslScript(
+							"clean-flatpak",
+							[
+									"#!/usr/bin/env bash",
+									"set -eu",
+									"",
+									'requested_root="$1"',
+									'app_id="$2"',
+									"",
+									'if [ -z "$requested_root" ]; then',
+									'  requested_root="$HOME/abnw-flatpak-build"',
+									"fi",
+									"",
+									'case "$requested_root" in',
+									'  "~") requested_root="$HOME" ;;',
+									'  "~/"*) requested_root="$HOME/${requested_root#~/}" ;;',
+									'  /*) ;;',
+									'  *) requested_root="$HOME/$requested_root" ;;',
+									"esac",
+									"",
+									'case "$requested_root" in',
+									'  /mnt/*)',
+									'    echo "ERROR: Refusing to clean a Windows-mounted Flatpak workspace."',
+									"    exit 2",
+									"    ;;",
+									"esac",
+									"",
+									'workspace="$requested_root/$app_id"',
+									"",
+									'rm -rf "$workspace/flatpak-build"',
+									'rm -rf "$workspace/flatpak-repo"',
+									'rm -f "$workspace"/ABNW\\ Launcher-*.flatpak',
+									"",
+									'echo "Removed disposable Flatpak build state from $workspace"',
+									'echo "Preserved Flatpak SDK, runtime, and download caches."'
+							]
+					)
+
+			invokeWsl(
+					[
+							"bash",
+							script,
+							flatpakWslRoot,
+							flatpakAppId
+					],
+					"clean"
+			)
+
+		} else if (
+				isLinuxHost()
+		) {
+			project.delete(
+					flatpakBuildDirectory
+							.get()
+							.asFile,
+
+					flatpakRepository
+							.get()
+							.asFile,
+
+					flatpakBundle
+							.get()
+							.asFile
+			)
+
+			println(
+					"[ABNW Flatpak] Removed disposable local build " +
+							"and repository state; preserved Flatpak caches."
+			)
+
+		} else {
+			throw new GradleException(
+					"Flatpak cleanup requires Linux " +
+							"or Windows with WSL."
+			)
+		}
+	}
 }
 
-tasks.named("run", JavaExec) {
-	if (System.getProperty("os.name").toLowerCase().contains("mac")) {
-		jvmArgs("-XstartOnFirstThread")
+/*
+ * ============================================================
+ * FLATPAK STATUS
+ * ============================================================
+ */
+
+tasks.register(
+		"flatpakStatus"
+) {
+
+	group = "distribution"
+
+	description =
+			"Shows active Flatpak, WSL, OSTree, Gradle, and Java processes."
+
+	doLast {
+		def processPattern =
+				"ps aux | grep -E " +
+						"'flatpak|flatpak-builder|ostree|gradle|java' " +
+						"| grep -v grep || true"
+
+		if (
+				isWindowsHost()
+		) {
+			invokeWsl(
+					[
+							"bash",
+							"-lc",
+							processPattern
+					],
+					"status"
+			)
+
+		} else if (
+				isLinuxHost()
+		) {
+			def process =
+					new ProcessBuilder(
+							[
+									"sh",
+									"-lc",
+									processPattern
+							]
+					)
+							.redirectErrorStream(
+									true
+							)
+							.start()
+
+			println(
+					process
+							.inputStream
+							.getText("UTF-8")
+			)
+
+			process.waitFor()
+
+		} else {
+			throw new GradleException(
+					"Flatpak status requires Linux " +
+							"or Windows with WSL."
+			)
+		}
+	}
+}
+
+/*
+ * ============================================================
+ * BUILD TASK
+ * ============================================================
+ */
+
+tasks.build {
+	dependsOn(
+			tasks.shadowJar,
+			linuxZip
+	)
+}
+
+/*
+ * ============================================================
+ * RUN
+ * ============================================================
+ */
+
+tasks.named(
+		"run",
+		JavaExec
+) {
+	if (
+			System
+					.getProperty("os.name")
+					.toLowerCase(Locale.ROOT)
+					.contains("mac")
+	) {
+		jvmArgs(
+				"-XstartOnFirstThread"
+		)
 	}
 }
