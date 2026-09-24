@@ -453,14 +453,20 @@ tasks.register("flatpak") {
 			wslCommand.toArray(wslCommandArray)
 			def wslProcess = new ProcessBuilder(wslCommandArray)
 				.directory(project.projectDir)
-				.inheritIO()
+				.redirectErrorStream(true)
 				.start()
+			def wslOutput = wslProcess.inputStream.getText("UTF-8")
 			def wslExitCode = wslProcess.waitFor()
+			def wslLog = new File(flatpakRoot.get().asFile, "wsl-${toolName}.log")
+			wslLog.parentFile.mkdirs()
+			wslLog.setText(wslOutput, "UTF-8")
 			if (wslExitCode != 0) {
 				if (wslExitCode == 127) {
 					throw new GradleException("WSL could not find ${toolName}. Install ${toolName} in the selected WSL distribution.")
 				}
-				throw new GradleException("The WSL ${toolName} command failed with exit code ${wslExitCode}.")
+				def outputLines = wslOutput.readLines()
+				def tail = outputLines.takeRight(80).join(System.lineSeparator())
+				throw new GradleException("The WSL ${toolName} command failed with exit code ${wslExitCode}. Full output: ${wslLog}\nLast output:\n${tail}")
 			}
 		}
 
