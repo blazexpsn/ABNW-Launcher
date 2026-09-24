@@ -475,9 +475,33 @@ tasks.register("flatpak") {
 		def wslBuildDirectory = windowsPathToWsl(flatpakBuildDirectory.get().asFile).toString()
 		def wslRepository = windowsPathToWsl(flatpakRepository.get().asFile).toString()
 		def wslBundle = windowsPathToWsl(flatpakBundle.get().asFile).toString()
+		// The SDK and runtime live inside the selected WSL distribution. Install the
+		// exact refs required by the manifest before invoking flatpak-builder. The
+		// install is idempotent, so subsequent builds finish immediately when the
+		// refs are already present.
+		invokeWsl([
+			"flatpak",
+			"remote-add",
+			"--user",
+			"--if-not-exists",
+			"flathub",
+			"https://flathub.org/repo/flathub.flatpakrepo"
+		], "flatpak-remote")
+		invokeWsl([
+			"flatpak",
+			"install",
+			"--user",
+			"--assumeyes",
+			"--or-update",
+			"flathub",
+			"org.freedesktop.Platform//24.08",
+			"org.freedesktop.Sdk//24.08",
+			"org.freedesktop.Sdk.Extension.openjdk21//24.08"
+		], "flatpak-install")
 		invokeWsl([
 			"flatpak-builder",
 			"--force-clean",
+			"--verbose",
 			"--repo=${wslRepository}",
 			wslBuildDirectory,
 			wslManifest
