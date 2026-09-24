@@ -448,8 +448,13 @@ tasks.register("flatpak") {
 			"--cd", windowsPathToWsl(project.projectDir),
 			"--", wslGradle, "--no-daemon", ":launcher:flatpakLinux"
 		])
-		project.exec {
-			commandLine([wsl.absolutePath] + wslArguments)
+		def wslProcess = new ProcessBuilder([wsl.absolutePath] + wslArguments)
+			.directory(project.projectDir)
+			.inheritIO()
+			.start()
+		def wslExitCode = wslProcess.waitFor()
+		if (wslExitCode != 0) {
+			throw new GradleException("The WSL Flatpak build failed with exit code ${wslExitCode}.")
 		}
 		if (!flatpakBundle.get().asFile.isFile()) {
 			throw new GradleException("WSL completed without producing ${flatpakBundle.get().asFile}.")
