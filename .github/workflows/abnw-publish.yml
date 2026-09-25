@@ -1,0 +1,263 @@
+name: ABNW Launcher Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "launcher.properties"
+      - "build.gradle"
+      - "settings.gradle"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "src/**"
+      - "linux/**"
+      - "flatpak/**"
+      - "cosmetics-api/**"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Rebuild and replace assets even if this version already has a release"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abnw-launcher-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Read launcher version
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.props.outputs.version }}
+      java: ${{ steps.props.outputs.java }}
+      tag: ${{ steps.props.outputs.tag }}
+      should_release: ${{ steps.check.outputs.should_release }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Read launcher.properties
+        id: props
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(
+            sed -n 's/^[[:space:]]*launcher_version[[:space:]]*=[[:space:]]*//p' launcher.properties |
+              tail -n 1 |
+              tr -d '\r'
+          )"
+
+          JAVA_VERSION="$(
+            sed -n 's/^[[:space:]]*java_version[[:space:]]*=[[:space:]]*//p' launcher.properties |
+              tail -n 1 |
+              tr -d '\r'
+          )"
+
+          if [ -z "$VERSION" ]; then
+            echo "launcher_version is missing from launcher.properties" >&2
+            exit 1
+          fi
+
+          if [ -z "$JAVA_VERSION" ]; then
+            echo "java_version is missing from launcher.properties" >&2
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "java=$JAVA_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "ABNW Launcher version: $VERSION"
+          echo "Java version: $JAVA_VERSION"
+
+      - name: Check whether this version already exists
+        id: check
+        shell: bash
+        env:
+          TAG: ${{ steps.props.outputs.tag }}
+          FORCE: ${{ inputs.force || false }}
+        run: |
+          set -euo pipefail
+
+          if [ "$FORCE" = "true" ]; then
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "Forced rebuild requested."
+            exit 0
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "$TAG already exists; nothing to publish."
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "$TAG is new and will be published."
+          fi
+
+  windows:
+    name: Windows installer
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ needs.prepare.outputs.java }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install WiX Toolset
+        shell: powershell
+        run: |
+          choco install wixtoolset --yes --no-progress
+
+      - name: Build Windows installer
+        shell: powershell
+        run: |
+          .\gradlew.bat --no-daemon clean jpackage --stacktrace
+
+      - name: Upload Windows release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: abnw-windows-${{ needs.prepare.outputs.version }}
+          if-no-files-found: error
+          path: |
+            build/distributions/*.exe
+
+  linux:
+    name: Linux ZIP and Flatpak
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ needs.prepare.outputs.java }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Flatpak tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+
+          flatpak remote-add             --user             --if-not-exists             flathub             https://flathub.org/repo/flathub.flatpakrepo
+
+          flatpak install             --user             --noninteractive             --assumeyes             flathub             org.freedesktop.Platform//24.08             org.freedesktop.Sdk//24.08             org.freedesktop.Sdk.Extension.openjdk21//24.08
+
+      - name: Build Linux ZIP and Flatpak
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon clean linuxZip flatpakLinux --stacktrace
+
+      - name: Upload Linux release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: abnw-linux-${{ needs.prepare.outputs.version }}
+          if-no-files-found: error
+          path: |
+            build/distributions/*.zip
+            build/distributions/*.flatpak
+            build/libs/*.jar
+
+  release:
+    name: Publish GitHub Release
+    needs:
+      - prepare
+      - windows
+      - linux
+
+    if: |
+      always() &&
+      needs.prepare.outputs.should_release == 'true' &&
+      needs.windows.result == 'success' &&
+      needs.linux.result == 'success'
+
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-files
+          merge-multiple: true
+
+      - name: Show files being published
+        shell: bash
+        run: |
+          set -euo pipefail
+          find release-files -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Create or update GitHub Release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t FILES < <(find release-files -maxdepth 1 -type f -print | sort)
+
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "No release files were downloaded." >&2
+            exit 1
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; replacing its uploaded assets."
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}"               --target "${GITHUB_SHA}"               --title "ABNW Launcher $VERSION"               --generate-notes
+          fi
+
+          echo "Published ABNW Launcher $VERSION as $TAG"
