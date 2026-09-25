@@ -1,6 +1,16 @@
 {
   "formatVersion": 1,
+
   "news": [
+    {
+      "id": "linux-flatpaks",
+      "title": "Flatpaks for Linux are here",
+      "summary": "The ABNW Launcher is now available as a Flatpak on Linux. It gives Linux players a sandboxed, self-contained way to install and run the launcher, while the existing Linux ZIP remains available for anyone who prefers a manual setup.",
+      "date": "2026-09-25",
+      "tag": "Launcher",
+      "url": "https://github.com/blazexpsn/ABNW-Launcher",
+      "image": ""
+    },
     {
       "id": "launcher-arrives",
       "title": "The ABNW Launcher has arrived",
@@ -29,6 +39,7 @@
       "image": ""
     }
   ],
+
   "announcements": [
     {
       "id": "welcome-1",
@@ -44,10 +55,21 @@
       "actionUrl": ""
     }
   ],
+
   "teasers": [
-    { "text": "The horizon is further away than you think.", "hint": "Coming later" },
-    { "text": "Something is stirring far beneath bedrock.", "hint": "Keep digging" },
-    { "text": "Titanium is only the first new metal.", "hint": "Soon" }
+    {
+      "text": "The horizon is further away than you think.",
+      "hint": "Coming later"
+    },
+    {
+      "text": "Something is stirring far beneath bedrock.",
+      "hint": "Keep digging"
+    },
+    {
+      "text": "Titanium is only the first new metal.",
+      "hint": "Soon"
+    }
   ],
+
   "screenshots": []
 }
