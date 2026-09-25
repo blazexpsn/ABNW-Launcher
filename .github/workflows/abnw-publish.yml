@@ -114,16 +114,13 @@ jobs:
 
           if [ "$FORCE" = "true" ]; then
             echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "Forced rebuild requested."
             exit 0
           fi
 
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
             echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "$TAG already exists; nothing to publish."
           else
             echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "$TAG is new and will be published."
           fi
 
   windows:
@@ -160,11 +157,6 @@ jobs:
         run: |
           choco install wixtoolset --yes --no-progress
 
-      - name: Show Gradle version
-        shell: powershell
-        run: |
-          gradle --version
-
       - name: Build Windows installer
         shell: powershell
         env:
@@ -173,7 +165,18 @@ jobs:
           Set-Location $env:PROJECT_DIR
           gradle --no-daemon clean jpackage --stacktrace
 
-      - name: Upload Windows release files
+      - name: Verify Windows output
+        shell: powershell
+        env:
+          PROJECT_DIR: ${{ needs.prepare.outputs.project_dir }}
+        run: |
+          $files = Get-ChildItem -Path "$env:PROJECT_DIR/build/distributions" -Filter *.exe -File
+          if ($files.Count -eq 0) {
+            throw "No Windows .exe was produced."
+          }
+          $files | ForEach-Object { Write-Host $_.FullName }
+
+      - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
         with:
           name: abnw-windows-${{ needs.prepare.outputs.version }}
@@ -182,7 +185,7 @@ jobs:
             ${{ needs.prepare.outputs.project_dir }}/build/distributions/*.exe
 
   linux:
-    name: Linux ZIP and Flatpak
+    name: Linux ZIP, Flatpak and standalone JAR
     needs: prepare
     if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-latest
@@ -228,29 +231,84 @@ jobs:
             org.freedesktop.Sdk//24.08 \
             org.freedesktop.Sdk.Extension.openjdk21//24.08
 
-      - name: Show Gradle version
-        shell: bash
-        run: |
-          gradle --version
-
-      - name: Build Linux ZIP and Flatpak
+      - name: Build standalone JAR, Linux ZIP and Flatpak
         shell: bash
         env:
           PROJECT_DIR: ${{ needs.prepare.outputs.project_dir }}
         run: |
           set -euo pipefail
           cd "$PROJECT_DIR"
-          gradle --no-daemon clean linuxZip flatpakLinux --stacktrace
 
-      - name: Upload Linux release files
+          gradle \
+            --no-daemon \
+            clean \
+            shadowJar \
+            linuxZip \
+            flatpakLinux \
+            --stacktrace
+
+      - name: Verify Linux outputs
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ needs.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+
+          echo "build/libs:"
+          find "$PROJECT_DIR/build/libs" -maxdepth 1 -type f -print || true
+
+          echo "build/distributions:"
+          find "$PROJECT_DIR/build/distributions" -maxdepth 1 -type f -print || true
+
+          JAR_COUNT="$(find "$PROJECT_DIR/build/libs" -maxdepth 1 -type f -name '*.jar' | wc -l)"
+          ZIP_COUNT="$(find "$PROJECT_DIR/build/distributions" -maxdepth 1 -type f -name '*.zip' | wc -l)"
+          FLATPAK_COUNT="$(find "$PROJECT_DIR/build/distributions" -maxdepth 1 -type f -name '*.flatpak' | wc -l)"
+
+          if [ "$JAR_COUNT" -lt 1 ]; then
+            echo "Standalone JAR is missing." >&2
+            exit 1
+          fi
+
+          if [ "$ZIP_COUNT" -lt 1 ]; then
+            echo "Linux ZIP is missing." >&2
+            exit 1
+          fi
+
+          if [ "$FLATPAK_COUNT" -lt 1 ]; then
+            echo "Flatpak is missing." >&2
+            exit 1
+          fi
+
+      - name: Stage Linux release files
+        shell: bash
+        env:
+          PROJECT_DIR: ${{ needs.prepare.outputs.project_dir }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-linux
+
+          find "$PROJECT_DIR/build/libs" \
+            -maxdepth 1 \
+            -type f \
+            -name '*.jar' \
+            -exec cp -v {} release-linux/ \;
+
+          find "$PROJECT_DIR/build/distributions" \
+            -maxdepth 1 \
+            -type f \
+            \( -name '*.zip' -o -name '*.flatpak' \) \
+            -exec cp -v {} release-linux/ \;
+
+          echo "Linux files staged for GitHub:"
+          find release-linux -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: abnw-linux-${{ needs.prepare.outputs.version }}
           if-no-files-found: error
-          path: |
-            ${{ needs.prepare.outputs.project_dir }}/build/distributions/*.zip
-            ${{ needs.prepare.outputs.project_dir }}/build/distributions/*.flatpak
-            ${{ needs.prepare.outputs.project_dir }}/build/libs/*.jar
+          path: release-linux/*
 
   release:
     name: Publish GitHub Release
@@ -278,32 +336,70 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download all release artifacts
+      - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          path: release-files
-          merge-multiple: true
+          name: abnw-windows-${{ needs.prepare.outputs.version }}
+          path: downloaded/windows
 
-      - name: Show files being published
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: abnw-linux-${{ needs.prepare.outputs.version }}
+          path: downloaded/linux
+
+      - name: Stage every release asset
         shell: bash
         run: |
           set -euo pipefail
+
+          mkdir -p release-files
+
+          while IFS= read -r -d '' file; do
+            cp -v "$file" release-files/
+          done < <(
+            find downloaded \
+              -type f \
+              \( \
+                -name '*.exe' \
+                -o -name '*.jar' \
+                -o -name '*.zip' \
+                -o -name '*.flatpak' \
+              \) \
+              -print0
+          )
+
+          echo "Assets that WILL be attached to the GitHub release:"
           find release-files -maxdepth 1 -type f -printf '%f\n' | sort
+
+          EXE_COUNT="$(find release-files -maxdepth 1 -type f -name '*.exe' | wc -l)"
+          JAR_COUNT="$(find release-files -maxdepth 1 -type f -name '*.jar' | wc -l)"
+          ZIP_COUNT="$(find release-files -maxdepth 1 -type f -name '*.zip' | wc -l)"
+          FLATPAK_COUNT="$(find release-files -maxdepth 1 -type f -name '*.flatpak' | wc -l)"
+
+          if [ "$EXE_COUNT" -lt 1 ] || \
+             [ "$JAR_COUNT" -lt 1 ] || \
+             [ "$ZIP_COUNT" -lt 1 ] || \
+             [ "$FLATPAK_COUNT" -lt 1 ]; then
+            echo "Release staging is incomplete." >&2
+            echo "exe=$EXE_COUNT jar=$JAR_COUNT zip=$ZIP_COUNT flatpak=$FLATPAK_COUNT" >&2
+            exit 1
+          fi
 
       - name: Create or update GitHub Release
         shell: bash
         run: |
           set -euo pipefail
 
-          mapfile -t FILES < <(find release-files -maxdepth 1 -type f -print | sort)
-
-          if [ "${#FILES[@]}" -eq 0 ]; then
-            echo "No release files were downloaded." >&2
-            exit 1
-          fi
+          mapfile -t FILES < <(
+            find release-files \
+              -maxdepth 1 \
+              -type f \
+              -print |
+            sort
+          )
 
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; replacing its uploaded assets."
             gh release upload "$TAG" "${FILES[@]}" --clobber
           else
             gh release create "$TAG" "${FILES[@]}" \
