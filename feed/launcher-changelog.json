@@ -2,6 +2,16 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.2.2",
+      "date": "2026-09-25",
+      "title": "The Linux Penguin and Snow are now friends",
+      "changes": [
+        "The ABNW Launcher is now available as a Flatpak on Linux, giving most Linux players a simpler, sandboxed way to install and run it.",
+        "The existing Linux ZIP is staying too, for anyone who prefers a manual installation without the Flatpak sandbox.",
+        "Linux releases now ship the Flatpak, Linux ZIP and standalone launcher jar alongside the Windows installer."
+      ]
+    },
+    {
       "version": "1.1.3",
       "date": "2026-09-21",
       "title": "Dress up your penguin",
