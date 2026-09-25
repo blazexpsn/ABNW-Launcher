@@ -19,7 +19,7 @@ Rather than distributing a complete modified copy of Minecraft, ABNW releases ar
 | **Abbreviation** | ABNW |
 | **Launcher** | ABNW Launcher |
 | **Tagline** | "A Brand New World" |
-| **Logo** | A pixel-art sunset over hills with the words "A BRAND NEW WORLD" |
+| **Logo** | A pixel-art purple night sky over hills with the letters "ABNW" |
 
 ABNW has its own name, logo, launcher and visual identity.
 
