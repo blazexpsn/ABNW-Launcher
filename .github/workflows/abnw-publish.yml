@@ -5,13 +5,11 @@ on:
     branches:
       - main
     paths:
-      - "launcher.properties"
-      - "build.gradle"
-      - "settings.gradle"
-      - "gradle/**"
-      - "gradlew"
-      - "gradlew.bat"
+      - "**/launcher.properties"
+      - "**/build.gradle"
+      - "**/settings.gradle"
       - "src/**"
+      - "launcher/**"
       - "linux/**"
       - "flatpak/**"
       - "cosmetics-api/**"
@@ -40,6 +38,7 @@ jobs:
       version: ${{ steps.props.outputs.version }}
       java: ${{ steps.props.outputs.java }}
       tag: ${{ steps.props.outputs.tag }}
+      project_dir: ${{ steps.props.outputs.project_dir }}
       should_release: ${{ steps.check.outputs.should_release }}
 
     steps:
@@ -49,38 +48,58 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
-      - name: Read launcher.properties
+      - name: Find launcher Gradle project
         id: props
         shell: bash
         run: |
           set -euo pipefail
 
+          PROPERTIES_FILE="$(
+            find . -maxdepth 4 -type f -name launcher.properties \
+              -exec sh -c 'test -f "$(dirname "$1")/build.gradle" && printf "%s\n" "$1"' _ {} \; \
+              | head -n 1
+          )"
+
+          if [ -z "$PROPERTIES_FILE" ]; then
+            echo "Could not find launcher.properties beside build.gradle." >&2
+            exit 1
+          fi
+
+          PROJECT_DIR="$(dirname "$PROPERTIES_FILE")"
+          PROJECT_DIR="${PROJECT_DIR#./}"
+
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR="."
+          fi
+
           VERSION="$(
-            sed -n 's/^[[:space:]]*launcher_version[[:space:]]*=[[:space:]]*//p' launcher.properties |
+            sed -n 's/^[[:space:]]*launcher_version[[:space:]]*=[[:space:]]*//p' "$PROPERTIES_FILE" |
               tail -n 1 |
               tr -d '\r'
           )"
 
           JAVA_VERSION="$(
-            sed -n 's/^[[:space:]]*java_version[[:space:]]*=[[:space:]]*//p' launcher.properties |
+            sed -n 's/^[[:space:]]*java_version[[:space:]]*=[[:space:]]*//p' "$PROPERTIES_FILE" |
               tail -n 1 |
               tr -d '\r'
           )"
 
           if [ -z "$VERSION" ]; then
-            echo "launcher_version is missing from launcher.properties" >&2
+            echo "launcher_version is missing from $PROPERTIES_FILE" >&2
             exit 1
           fi
 
           if [ -z "$JAVA_VERSION" ]; then
-            echo "java_version is missing from launcher.properties" >&2
+            echo "java_version is missing from $PROPERTIES_FILE" >&2
             exit 1
           fi
 
+          echo "project_dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "java=$JAVA_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
 
+          echo "Launcher project: $PROJECT_DIR"
           echo "ABNW Launcher version: $VERSION"
           echo "Java version: $JAVA_VERSION"
 
@@ -126,23 +145,33 @@ jobs:
           distribution: temurin
           java-version: ${{ needs.prepare.outputs.java }}
 
+      - name: Set up Gradle 8.8
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
 
       - name: Install WiX Toolset
         shell: powershell
         run: |
           choco install wixtoolset --yes --no-progress
 
-      - name: Build Windows installer
+      - name: Show Gradle version
         shell: powershell
         run: |
-          .\gradlew.bat --no-daemon clean jpackage --stacktrace
+          gradle --version
+
+      - name: Build Windows installer
+        shell: powershell
+        env:
+          PROJECT_DIR: ${{ needs.prepare.outputs.project_dir }}
+        run: |
+          Set-Location $env:PROJECT_DIR
+          gradle --no-daemon clean jpackage --stacktrace
 
       - name: Upload Windows release files
         uses: actions/upload-artifact@v4
@@ -150,7 +179,7 @@ jobs:
           name: abnw-windows-${{ needs.prepare.outputs.version }}
           if-no-files-found: error
           path: |
-            build/distributions/*.exe
+            ${{ needs.prepare.outputs.project_dir }}/build/distributions/*.exe
 
   linux:
     name: Linux ZIP and Flatpak
@@ -171,8 +200,10 @@ jobs:
           distribution: temurin
           java-version: ${{ needs.prepare.outputs.java }}
 
-      - name: Set up Gradle
+      - name: Set up Gradle 8.8
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
 
       - name: Install Flatpak tooling
         shell: bash
@@ -182,16 +213,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y flatpak flatpak-builder
 
-          flatpak remote-add             --user             --if-not-exists             flathub             https://flathub.org/repo/flathub.flatpakrepo
+          flatpak remote-add \
+            --user \
+            --if-not-exists \
+            flathub \
+            https://flathub.org/repo/flathub.flatpakrepo
 
-          flatpak install             --user             --noninteractive             --assumeyes             flathub             org.freedesktop.Platform//24.08             org.freedesktop.Sdk//24.08             org.freedesktop.Sdk.Extension.openjdk21//24.08
+          flatpak install \
+            --user \
+            --noninteractive \
+            --assumeyes \
+            flathub \
+            org.freedesktop.Platform//24.08 \
+            org.freedesktop.Sdk//24.08 \
+            org.freedesktop.Sdk.Extension.openjdk21//24.08
+
+      - name: Show Gradle version
+        shell: bash
+        run: |
+          gradle --version
 
       - name: Build Linux ZIP and Flatpak
         shell: bash
+        env:
+          PROJECT_DIR: ${{ needs.prepare.outputs.project_dir }}
         run: |
           set -euo pipefail
-          chmod +x gradlew
-          ./gradlew --no-daemon clean linuxZip flatpakLinux --stacktrace
+          cd "$PROJECT_DIR"
+          gradle --no-daemon clean linuxZip flatpakLinux --stacktrace
 
       - name: Upload Linux release files
         uses: actions/upload-artifact@v4
@@ -199,9 +248,9 @@ jobs:
           name: abnw-linux-${{ needs.prepare.outputs.version }}
           if-no-files-found: error
           path: |
-            build/distributions/*.zip
-            build/distributions/*.flatpak
-            build/libs/*.jar
+            ${{ needs.prepare.outputs.project_dir }}/build/distributions/*.zip
+            ${{ needs.prepare.outputs.project_dir }}/build/distributions/*.flatpak
+            ${{ needs.prepare.outputs.project_dir }}/build/libs/*.jar
 
   release:
     name: Publish GitHub Release
@@ -257,7 +306,8 @@ jobs:
             echo "Release $TAG already exists; replacing its uploaded assets."
             gh release upload "$TAG" "${FILES[@]}" --clobber
           else
-            gh release create "$TAG" "${FILES[@]}"               --target "${GITHUB_SHA}"               --title "ABNW Launcher $VERSION"               --generate-notes
+            gh release create "$TAG" "${FILES[@]}" \
+              --target "${GITHUB_SHA}" \
+              --title "ABNW Launcher $VERSION" \
+              --generate-notes
           fi
-
-          echo "Published ABNW Launcher $VERSION as $TAG"
