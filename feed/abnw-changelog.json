@@ -2,6 +2,20 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.24",
+      "date": "2026-09-27",
+      "title": "ABNW's own look: every block redrawn",
+      "changes": [
+        "Every block in the game has been redrawn. ABNW now ships its own artwork from the ground up rather than Minecraft's, in the same 16x16 pixel art but with stronger shapes, deeper colours and a violet cast in the shadows. A block should still tell you at a glance what it's made of -- that was the rule the whole set was drawn against.",
+        "Blocks that are made of the same thing now really are. Mossy cobblestone is the cobblestone with moss grown into its joints, not a second drawing of it. Every ore is the stone, deepslate or netherrack it's found in with veins set into the rock. Bricks, tiles and carvings are the material with the joints cut out of them, so a wall keeps the grain of the stone it was cut from. Grass, podzol, coarse dirt, farmland, the dirt path, mycelium and rooted dirt are all the same earth in different states.",
+        "Copper ages properly. The sheet of metal is drawn once and the four weathering stages are that same sheet with more patina on it, so an exposed copper door and a weathered one are unmistakably the same door.",
+        "Water, lava, fire, soul fire, portals, campfires, kelp and the sculk blooms are all newly animated, and every loop closes cleanly so nothing hitches once a second.",
+        "Biome colours still work. Grass, leaves, ferns, vines, lily pads, water and redstone wiring are drawn with no colour of their own, exactly as the game expects, so swamps stay green, birch forests stay pale, and a redstone line still shows how much power it's carrying.",
+        "ABNW's own blocks got the same treatment: titanium ore is now the stone it's found in with titanium in it, the cheese wheels have a proper rind and eyes, and the radio has a speaker grille, a dial and a lamp that lights when it's on.",
+        "Items are untouched for now -- tools, armour, food and everything else in your inventory are still the old artwork. They're next."
+      ]
+    },
+    {
       "version": "1.0.9.20",
       "date": "2026-09-22",
       "title": "Spellcraft, sandwiches and witches",
