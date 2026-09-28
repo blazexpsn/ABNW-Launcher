@@ -55,12 +55,12 @@ public final class LauncherConfig {
         return this.hasClientIdOverride() ? this.msaClientId.trim() : BuildInfo.MSA_CLIENT_ID;
     }
 
-    /** The client ID sign-in tries first: a Settings override wins, then the built-in launcher client ID, then ABNW's own. */
+    /** The client ID sign-in tries first: a Settings override wins, then the built-in primary client ID, then ABNW's own. */
     public String primaryClientId() {
-        if (this.hasClientIdOverride() || BuildInfo.MSA_LAUNCHER_CLIENT_ID.isEmpty()) {
+        if (this.hasClientIdOverride() || BuildInfo.MSA_PRIMARY_CLIENT_ID.isEmpty()) {
             return this.effectiveClientId();
         }
-        return BuildInfo.MSA_LAUNCHER_CLIENT_ID;
+        return BuildInfo.MSA_PRIMARY_CLIENT_ID;
     }
 
     /** The client ID to fall back to if the primary one is refused, or null when there is nothing different to try. */

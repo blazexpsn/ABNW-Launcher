@@ -738,57 +738,38 @@ public final class LauncherUi {
         this.signInWith(new MicrosoftAuth(usingFallback ? fallback : this.config.primaryClientId()), usingFallback);
     }
 
-    /** Switches to the fallback client ID, after the primary one was refused or when the player picks it in the sign-in dialog. */
-    void useFallbackSignIn() {
-        String fallback = this.config.fallbackClientId();
-        this.dialogs.signInFinished();
-        if (fallback != null) {
-            this.signInWith(new MicrosoftAuth(fallback), true);
-        }
-    }
-
     private void signInWith(final MicrosoftAuth auth, final boolean fallback) {
-        if (auth.usesBrowserSignIn()) {
-            try {
-                String url = auth.browserSignInUrl();
-                this.dialogs.openBrowserSignIn(auth.clientId(), url, !fallback && this.config.fallbackClientId() != null);
-                Desktop.browse(url);
-            } catch (MicrosoftAuth.AuthException e) {
-                this.fail(e);
-            }
-            return;
-        }
         this.tasks.submit("Connecting to Microsoft", progress -> auth.requestDeviceCode(), code -> {
-            Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), this::signedIn, error -> {
+            Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), account -> {
+                this.accounts.put(account);
+                this.initializeCosmetics(account);
+                this.config.selectedAccount = account.uuid;
+                this.config.save();
                 this.dialogs.signInFinished();
-                this.fail(error);
+            }, error -> {
+                this.dialogs.signInFinished();
+                if (!this.fallBackAfter(error, fallback)) {
+                    this.fail(error);
+                }
             });
             this.dialogs.openSignIn(code, signIn, fallback);
-        }, this::fail);
-    }
-
-    void completeBrowserSignIn(final String clientId, final String pasted) {
-        MicrosoftAuth auth = new MicrosoftAuth(clientId);
-        Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeBrowserSignIn(pasted, progress), this::signedIn, error -> {
-            boolean primary = clientId.equalsIgnoreCase(this.config.primaryClientId());
-            if (error instanceof MicrosoftAuth.ClientRejectedException && primary && this.config.fallbackClientId() != null) {
-                System.err.println("Primary Microsoft client ID refused, falling back: " + error.getMessage());
-                this.primaryClientRejected = true;
-                this.useFallbackSignIn();
-                return;
+        }, error -> {
+            if (!this.fallBackAfter(error, fallback)) {
+                this.fail(error);
             }
-            this.dialogs.signInFinished();
-            this.fail(error);
         });
-        this.dialogs.browserSignInSubmitted(signIn);
     }
 
-    private void signedIn(final Account account) {
-        this.accounts.put(account);
-        this.initializeCosmetics(account);
-        this.config.selectedAccount = account.uuid;
-        this.config.save();
-        this.dialogs.signInFinished();
+    /** Retries with ABNW's own client ID when the primary one was refused. Returns false when there is nothing left to try. */
+    private boolean fallBackAfter(final Throwable error, final boolean alreadyFallback) {
+        String fallback = this.config.fallbackClientId();
+        if (alreadyFallback || fallback == null || !(error instanceof MicrosoftAuth.ClientRejectedException)) {
+            return false;
+        }
+        System.err.println("Primary Microsoft client ID refused, falling back: " + error.getMessage());
+        this.primaryClientRejected = true;
+        this.signInWith(new MicrosoftAuth(fallback), true);
+        return true;
     }
 
     void importArchive() {

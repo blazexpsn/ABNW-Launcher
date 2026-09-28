@@ -3,9 +3,6 @@ package org.teamzetaverse.launcher.auth;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.io.IOException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.teamzetaverse.launcher.net.Http;
 import org.teamzetaverse.launcher.task.Progress;
@@ -15,11 +12,6 @@ public final class MicrosoftAuth {
     private static final String DEVICE_CODE_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode";
     private static final String TOKEN_URL = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token";
     private static final String SCOPE = "XboxLive.signin offline_access";
-    // Microsoft account (login.live.com) client IDs are 16 hex digits and sign in through a browser redirect instead of a device code.
-    private static final String LIVE_AUTHORIZE_URL = "https://login.live.com/oauth20_authorize.srf";
-    private static final String LIVE_TOKEN_URL = "https://login.live.com/oauth20_token.srf";
-    private static final String LIVE_REDIRECT_URI = "https://login.live.com/oauth20_desktop.srf";
-    private static final String LIVE_SCOPE = "service::user.auth.xboxlive.com::MBI_SSL";
     private static final String XBL_URL = "https://user.auth.xboxlive.com/user/authenticate";
     private static final String XSTS_URL = "https://xsts.auth.xboxlive.com/xsts/authorize";
     private static final String MINECRAFT_LOGIN_URL = "https://api.minecraftservices.com/authentication/login_with_xbox";
@@ -36,14 +28,6 @@ public final class MicrosoftAuth {
         return this.clientId;
     }
 
-    public boolean usesBrowserSignIn() {
-        return isLiveClientId(this.clientId);
-    }
-
-    static boolean isLiveClientId(final String clientId) {
-        return clientId != null && clientId.trim().matches("[0-9A-Fa-f]{16}");
-    }
-
     public static class AuthException extends IOException {
         public AuthException(final String message) {
             super(message);
@@ -57,89 +41,21 @@ public final class MicrosoftAuth {
         }
     }
 
-    public String browserSignInUrl() throws AuthException {
-        this.requireClientId();
-        return LIVE_AUTHORIZE_URL
-            + "?client_id=" + encode(this.clientId)
-            + "&response_type=code"
-            + "&redirect_uri=" + encode(LIVE_REDIRECT_URI)
-            + "&scope=" + encode(LIVE_SCOPE)
-            + "&prompt=select_account";
-    }
-
-    public Account completeBrowserSignIn(final String pasted, final Progress progress) throws IOException, Progress.CancelledException {
-        this.requireClientId();
-        String code = extractCode(pasted);
-        progress.status("Signing in to Microsoft...");
-        JsonObject token;
-        try {
-            token = Http.postForm(LIVE_TOKEN_URL, Map.of(
-                "client_id", this.clientId,
-                "code", code,
-                "grant_type", "authorization_code",
-                "redirect_uri", LIVE_REDIRECT_URI));
-        } catch (Http.StatusException e) {
-            String error = oauthError(e);
-            if (isClientError(error)) {
-                throw new ClientRejectedException("Microsoft refused this launcher's sign-in (" + error + ").");
-            }
-            throw new AuthException("Microsoft did not accept that sign-in" + (error.isEmpty() ? "" : " (" + error + ")")
-                + ". Each sign-in link only works once and expires after a few minutes, so sign in again.");
-        }
-        Account account = new Account();
-        account.msaClientId = this.clientId;
-        account.msaRefreshToken = Json.string(token, "refresh_token");
-        this.signInToMinecraft(account, Json.string(token, "access_token"), progress);
-        return account;
-    }
-
-    static String extractCode(final String pasted) throws AuthException {
-        String text = pasted == null ? "" : pasted.trim();
-        int start = text.indexOf('?');
-        String query = start < 0 ? null : text.substring(start + 1);
-        if (query == null && text.contains("#")) {
-            query = text.substring(text.indexOf('#') + 1);
-        }
-        if (query == null) {
-            if (text.matches("[A-Za-z0-9._!*$-]{10,}")) {
-                return text;
-            }
-            throw new AuthException("Paste the full address of the blank page Microsoft sent you to. It contains \"code=\".");
-        }
-        int hash = query.indexOf('#');
-        if (hash >= 0) {
-            query = query.substring(0, hash) + "&" + query.substring(hash + 1);
-        }
-        String code = null;
-        String error = null;
-        for (String pair : query.split("&")) {
-            int equals = pair.indexOf('=');
-            if (equals <= 0) {
-                continue;
-            }
-            String key = pair.substring(0, equals);
-            String value = URLDecoder.decode(pair.substring(equals + 1), StandardCharsets.UTF_8);
-            if (key.equals("code")) {
-                code = value;
-            } else if (key.equals("error")) {
-                error = value;
-            }
-        }
-        if (error != null) {
-            throw new AuthException(error.equals("access_denied") ? "Sign-in was cancelled or declined." : "Microsoft sign-in failed: " + error);
-        }
-        if (code == null || code.isBlank()) {
-            throw new AuthException("That address has no sign-in code in it. Copy the address of the blank page after you finish signing in.");
-        }
-        return code;
-    }
-
     public record DeviceCode(String deviceCode, String userCode, String verificationUri, int intervalSeconds, long expiresAtMillis) {
     }
 
     public DeviceCode requestDeviceCode() throws IOException {
         this.requireClientId();
-        JsonObject response = Http.postForm(DEVICE_CODE_URL, Map.of("client_id", this.clientId, "scope", SCOPE));
+        JsonObject response;
+        try {
+            response = Http.postForm(DEVICE_CODE_URL, Map.of("client_id", this.clientId, "scope", SCOPE));
+        } catch (Http.StatusException e) {
+            if (e.status == 400 || e.status == 401) {
+                String error = oauthError(e);
+                throw new ClientRejectedException("Microsoft refused this launcher's sign-in" + (error.isEmpty() ? "" : " (" + error + ")") + ".");
+            }
+            throw e;
+        }
         return new DeviceCode(
             Json.string(response, "device_code"),
             Json.string(response, "user_code"),
@@ -192,21 +108,13 @@ public final class MicrosoftAuth {
         }
         this.requireClientId();
         progress.status("Signing in as " + account.name + "...");
-        boolean live = this.usesBrowserSignIn();
         JsonObject token;
         try {
-            token = Http.postForm(live ? LIVE_TOKEN_URL : TOKEN_URL, live
-                ? Map.of(
-                    "grant_type", "refresh_token",
-                    "client_id", this.clientId,
-                    "refresh_token", account.msaRefreshToken,
-                    "redirect_uri", LIVE_REDIRECT_URI,
-                    "scope", LIVE_SCOPE)
-                : Map.of(
-                    "grant_type", "refresh_token",
-                    "client_id", this.clientId,
-                    "refresh_token", account.msaRefreshToken,
-                    "scope", SCOPE));
+            token = Http.postForm(TOKEN_URL, Map.of(
+                "grant_type", "refresh_token",
+                "client_id", this.clientId,
+                "refresh_token", account.msaRefreshToken,
+                "scope", SCOPE));
         } catch (Http.StatusException e) {
             throw new AuthException("Your Microsoft sign-in for " + account.name + " has expired. Remove the account and sign in again.");
         }
@@ -224,8 +132,7 @@ public final class MicrosoftAuth {
         JsonObject xblProperties = new JsonObject();
         xblProperties.addProperty("AuthMethod", "RPS");
         xblProperties.addProperty("SiteName", "user.auth.xboxlive.com");
-        // login.live.com tokens are passed as "t=", Azure (login.microsoftonline.com) tokens as "d=".
-        xblProperties.addProperty("RpsTicket", (this.usesBrowserSignIn() ? "t=" : "d=") + msaAccessToken);
+        xblProperties.addProperty("RpsTicket", "d=" + msaAccessToken);
         xblRequest.add("Properties", xblProperties);
         xblRequest.addProperty("RelyingParty", "http://auth.xboxlive.com");
         xblRequest.addProperty("TokenType", "JWT");
@@ -331,14 +238,6 @@ public final class MicrosoftAuth {
         }
         String value = Json.string(xui.get(0).getAsJsonObject(), claim);
         return value == null ? "" : value;
-    }
-
-    private static boolean isClientError(final String error) {
-        return error.equals("invalid_client") || error.equals("unauthorized_client") || error.equals("unsupported_grant_type");
-    }
-
-    private static String encode(final String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 
     private static String oauthError(final Http.StatusException e) {
