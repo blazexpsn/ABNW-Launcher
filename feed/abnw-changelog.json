@@ -2,6 +2,24 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.33",
+      "date": "2026-09-28",
+      "title": "Spells have levels now",
+      "changes": [
+        "Every spell can be cast at nine strengths. You still learn a spell once, and from then on you choose how hard to throw it: hold sneak and press the up arrow to cast it higher, the down arrow to cast it lower. A first-level Magic Missile is the dart it always was; a ninth-level one hits harder than the best sword in the game.",
+        "Nothing stops you casting at ninth level except paying for it. There is no rank to earn and nothing to unlock - the cost simply climbs, and it climbs steeply: ninth level takes twelve times what first level does. A ninth-level Meteor is fifteen diamond dust and thirty-six levels of experience, which is an expedition rather than something you do twice in a fight.",
+        "Spells paid for in hunger work differently, because they had to. The food bar holds twenty, so multiplying Cure Wounds' three hunger by twelve would not have made it expensive, it would have made it uncastable. Those spells keep the same hunger at every level and ask for experience on top when you cast them high.",
+        "What a spell gains from being upcast is its own. A bolt hits harder, a wall grows longer, a summoning brings more of them for longer, an explosion gets wider. A few gain nothing and say so: Recall takes you home whatever you pour into it, so the level keys skip straight past it rather than letting you pay twelve times over for the same trip.",
+        "Six quickcast keys, on Z X C V B N. Open a staff and you will find a row of six boxes under the tomes: click a box, click the tome you want on it, and scroll to set the level it casts at. Each key then fires that spell at that level, without going near the spell list. The bindings live in the staff, so picking up a different staff means picking up a different six spells.",
+        "A spellbook, crafted from a book, an amethyst shard and a feather. It lists every spell you have learned and what each one costs at each of its levels, so you can read the price before you commit to it rather than finding out by failing to pay.",
+        "Witches cast at a level to match where they find you. A witch that wanders out of the swamp on your second night casts as weakly as a spell goes; one that finds you in a base you have lived in for weeks, on Hard, casts at ninth level. It follows how long the world has been played, how long anyone has spent in that particular place, and the difficulty you chose.",
+        "All forty-six spells have been rebalanced around the new range. They were written as a set of spells you cast; they are now written as the weakest version of a spell you can cast as hard as you can afford.",
+        "Cooldowns no longer apply in creative. Costs never did, so the cooldown was the last thing still getting in the way of someone who has nothing to go and gather.",
+        "The title screen has no splash text any more. The picture behind the menu is the thing worth looking at, and a yellow joke rotating over it was competing with it for nothing.",
+        "Deepslate titanium ore is in the creative menu, next to the ordinary kind. It was in the world and in the recipe book from the moment it existed, but there was no way to get one out of creative without a command."
+      ]
+    },
+    {
       "version": "1.0.9.30",
       "date": "2026-09-28",
       "title": "Fixes the crash on startup in 1.0.9.29",
