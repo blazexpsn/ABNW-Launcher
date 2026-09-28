@@ -2,6 +2,15 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.30",
+      "date": "2026-09-28",
+      "title": "Fixes the crash on startup in 1.0.9.29",
+      "changes": [
+        "1.0.9.29 crashed before it reached the title screen. The experience that titanium ore drops when you break it, which was new in that version, was written in a form the game could not read, and the game will not start with a block it cannot understand. It is written correctly now, and titanium still gives the experience it was meant to.",
+        "Nothing was at risk. The crash happened while the game was still starting up, long before it opened a world, so no save was touched by it. If you were on 1.0.9.29 you saw the crash report and nothing else; every other change in that version is intact and arrives with this one."
+      ]
+    },
+    {
       "version": "1.0.9.29",
       "date": "2026-09-28",
       "title": "A menu with a view, and titanium in the deep",
