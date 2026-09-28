@@ -2,11 +2,22 @@
   "formatVersion": 1,
   "entries": [
     {
-      "version": "1.0.9.24",
-      "date": "2026-09-27",
-      "title": "ABNW's own look: every block redrawn",
+      "version": "1.0.9.29",
+      "date": "2026-09-28",
+      "title": "A menu with a view, and titanium in the deep",
       "changes": [
-        "We came across some issues, removed herobrine we think"
+        "The title screen no longer spins around a panorama. It shows places instead: thirteen pixel-art scenes of the world, from the Rise and the Deep Dark to a cherry grove, the badlands and a pale garden, each held for a while and then faded into the next while the camera drifts slowly across it.",
+        "Nothing in those scenes is a stored animation. Windows flicker, gulls cross the sky, sculk pulses, moss sways, snow falls and water moves, all drawn fresh every frame from the scene itself, so it runs as smoothly as the rest of the game and costs nothing to keep.",
+        "The last of them is a beach at low tide. Gulls over the water, and something walking along the sand that isn't in the game yet.",
+        "The menu has moved into a panel down the left-hand side so the scene behind it stays visible, with the wordmark inside the panel and the name of the place you're looking at lettered in the corner.",
+        "Buttons on the title screen are ABNW's own now, in the launcher's violet, lettered in the launcher's typeface, with the item that best stands for each one beside it. Only the title screen uses them; the pause menu, options and everything else keep the buttons you know.",
+        "Realms is gone from the menu. ABNW doesn't speak the same protocol as vanilla, so the service was never reachable from here and the button only ever led nowhere.",
+        "Titanium ore has been redrawn. It is set into the stone it is found in rather than painted over it, and it is bright polished metal now instead of grey on grey, so you can pick it out across a cave.",
+        "Titanium found below the deepslate line comes as deepslate titanium ore, with its own texture, its own hardness and the same drops. Dig deep enough and the ordinary kind no longer turns up at all.",
+        "Breaking titanium ore gives experience, the way every other ore that drops its product directly already did. It gave none at all before.",
+        "Steel armour can be crafted. A helmet, chestplate, leggings and boots have been in the game since the steel tools arrived, with no recipe to make any of them.",
+        "Steel gear is repaired with steel. A steel pickaxe used to demand iron ingots on an anvil and refuse the steel it was made of.",
+        "Steel tool recipes now file under Equipment in the recipe book, alongside every other tool, instead of hiding in Miscellaneous."
       ]
     },
     {
