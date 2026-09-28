@@ -50,7 +50,26 @@ public final class LauncherConfig {
         }
     }
 
+    /** ABNW's own client ID, or the one set in Settings. Used for device-code sign-in and as the fallback. */
     public String effectiveClientId() {
-        return this.msaClientId != null && !this.msaClientId.isBlank() ? this.msaClientId.trim() : BuildInfo.MSA_CLIENT_ID;
+        return this.hasClientIdOverride() ? this.msaClientId.trim() : BuildInfo.MSA_CLIENT_ID;
+    }
+
+    /** The client ID sign-in tries first: a Settings override wins, then the built-in launcher client ID, then ABNW's own. */
+    public String primaryClientId() {
+        if (this.hasClientIdOverride() || BuildInfo.MSA_LAUNCHER_CLIENT_ID.isEmpty()) {
+            return this.effectiveClientId();
+        }
+        return BuildInfo.MSA_LAUNCHER_CLIENT_ID;
+    }
+
+    /** The client ID to fall back to if the primary one is refused, or null when there is nothing different to try. */
+    public String fallbackClientId() {
+        String fallback = this.effectiveClientId();
+        return fallback.isEmpty() || fallback.equalsIgnoreCase(this.primaryClientId()) ? null : fallback;
+    }
+
+    private boolean hasClientIdOverride() {
+        return this.msaClientId != null && !this.msaClientId.isBlank();
     }
 }

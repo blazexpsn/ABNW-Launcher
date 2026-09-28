@@ -624,8 +624,11 @@ public final class LauncherUi {
         }, ok -> this.loadCosmetics(), this::fail);
     }
 
-    MicrosoftAuth auth() {
-        return new MicrosoftAuth(this.config.effectiveClientId());
+    private boolean primaryClientRejected;
+
+    MicrosoftAuth auth(final Account account) {
+        String clientId = account.msaClientId == null || account.msaClientId.isBlank() ? this.config.effectiveClientId() : account.msaClientId;
+        return new MicrosoftAuth(clientId);
     }
 
     void play(final Instance instance) {
@@ -643,7 +646,7 @@ public final class LauncherUi {
         this.select(instance);
         this.tasks.submit("Launching " + instance.name, progress -> {
             progress.status("Signing in…");
-            this.auth().refresh(account, progress);
+            this.auth(account).refresh(account, progress);
             this.accounts.save();
             var installed = this.installer.install(instance.release, this.instances.readLibraries(instance), progress);
             progress.checkCancelled();
@@ -730,20 +733,62 @@ public final class LauncherUi {
     }
 
     void startSignIn() {
-        MicrosoftAuth auth = this.auth();
+        String fallback = this.config.fallbackClientId();
+        boolean usingFallback = this.primaryClientRejected && fallback != null;
+        this.signInWith(new MicrosoftAuth(usingFallback ? fallback : this.config.primaryClientId()), usingFallback);
+    }
+
+    /** Switches to the fallback client ID, after the primary one was refused or when the player picks it in the sign-in dialog. */
+    void useFallbackSignIn() {
+        String fallback = this.config.fallbackClientId();
+        this.dialogs.signInFinished();
+        if (fallback != null) {
+            this.signInWith(new MicrosoftAuth(fallback), true);
+        }
+    }
+
+    private void signInWith(final MicrosoftAuth auth, final boolean fallback) {
+        if (auth.usesBrowserSignIn()) {
+            try {
+                String url = auth.browserSignInUrl();
+                this.dialogs.openBrowserSignIn(auth.clientId(), url, !fallback && this.config.fallbackClientId() != null);
+                Desktop.browse(url);
+            } catch (MicrosoftAuth.AuthException e) {
+                this.fail(e);
+            }
+            return;
+        }
         this.tasks.submit("Connecting to Microsoft", progress -> auth.requestDeviceCode(), code -> {
-            Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), account -> {
-                this.accounts.put(account);
-                this.initializeCosmetics(account);
-                this.config.selectedAccount = account.uuid;
-                this.config.save();
-                this.dialogs.signInFinished();
-            }, error -> {
+            Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), this::signedIn, error -> {
                 this.dialogs.signInFinished();
                 this.fail(error);
             });
-            this.dialogs.openSignIn(code, signIn);
+            this.dialogs.openSignIn(code, signIn, fallback);
         }, this::fail);
+    }
+
+    void completeBrowserSignIn(final String clientId, final String pasted) {
+        MicrosoftAuth auth = new MicrosoftAuth(clientId);
+        Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeBrowserSignIn(pasted, progress), this::signedIn, error -> {
+            boolean primary = clientId.equalsIgnoreCase(this.config.primaryClientId());
+            if (error instanceof MicrosoftAuth.ClientRejectedException && primary && this.config.fallbackClientId() != null) {
+                System.err.println("Primary Microsoft client ID refused, falling back: " + error.getMessage());
+                this.primaryClientRejected = true;
+                this.useFallbackSignIn();
+                return;
+            }
+            this.dialogs.signInFinished();
+            this.fail(error);
+        });
+        this.dialogs.browserSignInSubmitted(signIn);
+    }
+
+    private void signedIn(final Account account) {
+        this.accounts.put(account);
+        this.initializeCosmetics(account);
+        this.config.selectedAccount = account.uuid;
+        this.config.save();
+        this.dialogs.signInFinished();
     }
 
     void importArchive() {

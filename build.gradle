@@ -112,6 +112,9 @@ def buildInfo = [
 		launcherRepository : prop("launcher_repository"),
 		launcherBranch     : prop("launcher_branch"),
 		msaClientId        : prop("msa_client_id"),
+		msaLauncherClientId: launcher
+				.getProperty("msa_launcher_client_id", "")
+				.trim(),
 		discordClientId    : prop("discord_client_id"),
 		cosmeticsApiUrl    : launcher
 				.getProperty("cosmetics_api_url", "")

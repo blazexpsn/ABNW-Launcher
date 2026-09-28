@@ -61,7 +61,8 @@ public final class InstanceArchive {
         copy.release = instance.release;
         copy.renderer = instance.renderer;
         copy.memoryMb = instance.memoryMb;
-        copy.extraJvmArgs = instance.extraJvmArgs;
+        // Extra JVM arguments are never exported: they can run arbitrary code and often hold machine-specific paths.
+        copy.extraJvmArgs = "";
         return copy;
     }
 
@@ -130,7 +131,8 @@ public final class InstanceArchive {
             instance.release = release;
             instance.renderer = described.renderer == null ? "auto" : described.renderer;
             instance.memoryMb = Math.max(0, described.memoryMb);
-            instance.extraJvmArgs = described.extraJvmArgs == null ? "" : described.extraJvmArgs;
+            // Never trust JVM arguments from an archive: flags like -javaagent or -XX:OnOutOfMemoryError run code on launch.
+            instance.extraJvmArgs = "";
             instance.created = System.currentTimeMillis();
             instance.folder(folder);
             Files.createDirectories(instance.modsFolder());

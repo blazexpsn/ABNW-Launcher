@@ -12,6 +12,7 @@ public final class BuildInfo {
     public static final String LAUNCHER_REPOSITORY;
     public static final String LAUNCHER_BRANCH;
     public static final String MSA_CLIENT_ID;
+    public static final String MSA_LAUNCHER_CLIENT_ID;
     public static final String DISCORD_CLIENT_ID;
     public static final String COSMETICS_API_URL;
     public static final String PATREON_PAGE_URL;
@@ -30,6 +31,7 @@ public final class BuildInfo {
         LAUNCHER_REPOSITORY = clean(properties.getProperty("launcherRepository"), "blazexpsn/ABNW-Launcher");
         LAUNCHER_BRANCH = clean(properties.getProperty("launcherBranch"), "main");
         MSA_CLIENT_ID = clean(properties.getProperty("msaClientId"), "");
+        MSA_LAUNCHER_CLIENT_ID = clean(properties.getProperty("msaLauncherClientId"), "");
         DISCORD_CLIENT_ID = clean(properties.getProperty("discordClientId"), "");
         COSMETICS_API_URL = httpsOrEmpty(clean(System.getProperty(CosmeticsService.URL_PROPERTY, properties.getProperty("cosmeticsApiUrl")), CosmeticsService.DEFAULT_URL));
         PATREON_PAGE_URL = httpsOrEmpty(clean(properties.getProperty("patreonPageUrl"), ""));

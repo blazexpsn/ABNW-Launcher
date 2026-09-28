@@ -53,7 +53,7 @@ public final class GameLauncher {
         tokens.put("auth_uuid", account.uuid);
         tokens.put("auth_access_token", account.devOffline ? "0" : account.minecraftToken);
         tokens.put("auth_session", account.devOffline ? "0" : account.minecraftToken);
-        tokens.put("clientid", this.config.effectiveClientId());
+        tokens.put("clientid", account.msaClientId == null || account.msaClientId.isBlank() ? this.config.effectiveClientId() : account.msaClientId);
         tokens.put("auth_xuid", account.devOffline ? "0" : account.xuid);
         tokens.put("user_type", account.devOffline ? "legacy" : "msa");
         tokens.put("user_properties", "{}");

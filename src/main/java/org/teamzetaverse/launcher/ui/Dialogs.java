@@ -46,6 +46,11 @@ final class Dialogs {
     private final ImString renameText = new ImString(64);
 
     private MicrosoftAuth.DeviceCode deviceCode;
+    private boolean deviceCodeIsFallback;
+    private String browserClientId;
+    private String browserUrl;
+    private boolean browserCanFallBack;
+    private final ImString pastedUrl = new ImString(4096);
     private Progress signInProgress;
     private double copiedAt = -10;
 
@@ -80,14 +85,32 @@ final class Dialogs {
         this.pending = DELETE;
     }
 
-    void openSignIn(final MicrosoftAuth.DeviceCode code, final Progress progress) {
+    void openSignIn(final MicrosoftAuth.DeviceCode code, final Progress progress, final boolean fallback) {
+        this.signInFinished();
         this.deviceCode = code;
+        this.deviceCodeIsFallback = fallback;
         this.signInProgress = progress;
         this.pending = SIGN_IN;
     }
 
+    void openBrowserSignIn(final String clientId, final String url, final boolean canFallBack) {
+        this.signInFinished();
+        this.browserClientId = clientId;
+        this.browserUrl = url;
+        this.browserCanFallBack = canFallBack;
+        this.pastedUrl.set("");
+        this.pending = SIGN_IN;
+    }
+
+    void browserSignInSubmitted(final Progress progress) {
+        this.signInProgress = progress;
+    }
+
     void signInFinished() {
         this.deviceCode = null;
+        this.deviceCodeIsFallback = false;
+        this.browserClientId = null;
+        this.browserUrl = null;
         this.signInProgress = null;
     }
 
@@ -170,8 +193,10 @@ final class Dialogs {
     }
 
     private void onClose(final String name) {
-        if (SIGN_IN.equals(name) && this.signInProgress != null) {
-            this.signInProgress.cancel();
+        if (SIGN_IN.equals(name)) {
+            if (this.signInProgress != null) {
+                this.signInProgress.cancel();
+            }
             this.signInFinished();
         }
     }
@@ -352,6 +377,11 @@ final class Dialogs {
         if (!this.begin(SIGN_IN, 520, "Sign in with Microsoft", "Use the account that owns Minecraft: Java Edition or has PC Game Pass.")) {
             return;
         }
+        if (this.browserUrl != null) {
+            this.drawBrowserSignIn();
+            this.end();
+            return;
+        }
         MicrosoftAuth.DeviceCode code = this.deviceCode;
         if (code == null) {
             ImGui.closeCurrentPopup();
@@ -359,6 +389,11 @@ final class Dialogs {
             return;
         }
         float width = ImGui.getContentRegionAvailX();
+        if (this.deviceCodeIsFallback) {
+            ImGui.pushTextWrapPos(ImGui.getCursorPosX() + width);
+            Widgets.textWrapped(Fonts.small, Theme.FAINT, "Signing in with ABNW's own sign-in instead.");
+            ImGui.popTextWrapPos();
+        }
         Widgets.text(Fonts.small, Theme.MUTED, "1.  Open " + code.verificationUri().replace("https://", ""));
         Widgets.text(Fonts.small, Theme.MUTED, "2.  Enter this code");
         ImGui.dummy(0, px(4));
@@ -388,6 +423,59 @@ final class Dialogs {
         Widgets.progress(-1, width, px(4));
         Widgets.text(Fonts.small, Theme.FAINT, status);
         this.end();
+    }
+
+    private void drawBrowserSignIn() {
+        float width = ImGui.getContentRegionAvailX();
+        Progress progress = this.signInProgress;
+        if (progress != null) {
+            Widgets.progress(-1, width, px(4));
+            Widgets.text(Fonts.small, Theme.FAINT, progress.status().isEmpty() ? "Signing in…" : progress.status());
+            return;
+        }
+        String url = this.browserUrl;
+        Widgets.text(Fonts.small, Theme.MUTED, "1.  Sign in with Microsoft in your browser");
+        ImGui.dummy(0, px(2));
+        if (Widgets.secondary("signin-browser", "Open sign-in page", Icons.Icon.EXTERNAL)) {
+            Desktop.browse(url);
+        }
+        ImGui.sameLine(0, px(10));
+        boolean copied = ImGui.getTime() - this.copiedAt < 2.0;
+        if (Widgets.secondary("signin-copy-link", copied ? "Link copied" : "Copy link", copied ? Icons.Icon.CHECK : Icons.Icon.COPY)) {
+            ImGui.setClipboardText(url);
+            this.copiedAt = ImGui.getTime();
+        }
+        ImGui.dummy(0, px(6));
+        ImGui.pushTextWrapPos(ImGui.getCursorPosX() + width);
+        Widgets.textWrapped(Fonts.small, Theme.MUTED, "2.  When you end up on a blank page, copy the whole address from the address bar and paste it here");
+        ImGui.popTextWrapPos();
+        ImGui.dummy(0, px(2));
+        if (ImGui.isWindowAppearing()) {
+            ImGui.setKeyboardFocusHere();
+        }
+        Widgets.beginField();
+        ImGui.setNextItemWidth(width);
+        boolean entered = ImGui.inputTextWithHint("##signin-url", "https://login.live.com/oauth20_desktop.srf?code=…", this.pastedUrl,
+            ImGuiInputTextFlags.EnterReturnsTrue);
+        Widgets.endField();
+        boolean ready = !this.pastedUrl.get().isBlank();
+        String clientId = this.browserClientId;
+        Runnable submit = () -> this.ui.completeBrowserSignIn(clientId, this.pastedUrl.get());
+        if (entered && ready) {
+            submit.run();
+        }
+        if (this.browserCanFallBack) {
+            ImGui.dummy(0, px(2));
+            String label = "Having trouble? Use a sign-in code instead";
+            if (Widgets.button("signin-fallback", label, null, Widgets.Variant.GHOST, Widgets.textWidth(Fonts.label, label) + px(36), px(34), true)) {
+                this.ui.useFallbackSignIn();
+                return;
+            }
+        }
+        this.footerButtons("signin-cancel", () -> {
+            this.signInFinished();
+            ImGui.closeCurrentPopup();
+        }, "signin-go", "Sign in", Icons.Icon.CHECK, ready, submit, false);
     }
 
     private void drawRename() {
