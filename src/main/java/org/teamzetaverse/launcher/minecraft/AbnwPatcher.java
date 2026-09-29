@@ -27,6 +27,9 @@ final class AbnwPatcher {
 
         Path delta = deltasDir.resolve(release.deltaFileName());
         if (!Hashing.matches(delta, release.delta.sha256, release.delta.size)) {
+            if (release.imported) {
+                throw new IOException("The patch for " + release.displayName() + " is no longer in the launcher's cache. Import its .xdelta again.");
+            }
             progress.stage("Downloading the " + release.displayName() + " patch", release.delta.size);
             Http.download(release.delta.url, delta, release.delta.sha256, progress::advance, progress::isCancelled);
         }

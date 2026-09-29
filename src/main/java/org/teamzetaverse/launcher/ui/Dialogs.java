@@ -19,6 +19,7 @@ import org.teamzetaverse.launcher.auth.MicrosoftAuth;
 import org.teamzetaverse.launcher.instance.Instance;
 import org.teamzetaverse.launcher.release.Release;
 import org.teamzetaverse.launcher.release.ReleaseService;
+import org.teamzetaverse.launcher.release.TestBuildImport;
 import org.teamzetaverse.launcher.task.Progress;
 
 final class Dialogs {
@@ -27,6 +28,7 @@ final class Dialogs {
     private static final String SIGN_IN = "Sign in";
     private static final String RENAME = "Rename";
     private static final String DELETE = "Delete";
+    private static final String TRUST_PATCH = "Trust this patch?";
     private static final String ERROR = "Something went wrong";
 
     private final LauncherUi ui;
@@ -45,8 +47,9 @@ final class Dialogs {
     private Instance target;
     private final ImString renameText = new ImString(64);
 
+    private TestBuildImport.Candidate testBuild;
+
     private MicrosoftAuth.DeviceCode deviceCode;
-    private boolean deviceCodeIsFallback;
     private Progress signInProgress;
     private double copiedAt = -10;
 
@@ -81,9 +84,13 @@ final class Dialogs {
         this.pending = DELETE;
     }
 
-    void openSignIn(final MicrosoftAuth.DeviceCode code, final Progress progress, final boolean fallback) {
+    void openTrustPatch(final TestBuildImport.Candidate candidate) {
+        this.testBuild = candidate;
+        this.pending = TRUST_PATCH;
+    }
+
+    void openSignIn(final MicrosoftAuth.DeviceCode code, final Progress progress) {
         this.deviceCode = code;
-        this.deviceCodeIsFallback = fallback;
         this.signInProgress = progress;
         this.pending = SIGN_IN;
     }
@@ -105,6 +112,7 @@ final class Dialogs {
         this.drawSignIn();
         this.drawRename();
         this.drawDelete();
+        this.drawTrustPatch();
         this.drawError();
     }
 
@@ -135,7 +143,7 @@ final class Dialogs {
             case NEW_INSTANCE, RENAME -> Icons.Icon.PENGUIN_BOX;
             case CHANGE_RELEASE -> Icons.Icon.UPDATE;
             case SIGN_IN -> Icons.Icon.PENGUIN_KEY;
-            case DELETE -> Icons.Icon.PENGUIN_WARN;
+            case DELETE, TRUST_PATCH -> Icons.Icon.PENGUIN_WARN;
             default -> Icons.Icon.PENGUIN_ALERT;
         };
         float headerX = ImGui.getCursorScreenPosX();
@@ -361,11 +369,6 @@ final class Dialogs {
             return;
         }
         float width = ImGui.getContentRegionAvailX();
-        if (this.deviceCodeIsFallback) {
-            ImGui.pushTextWrapPos(ImGui.getCursorPosX() + width);
-            Widgets.textWrapped(Fonts.small, Theme.FAINT, "The first sign-in method didn't work, so this uses ABNW's own. Enter the new code below.");
-            ImGui.popTextWrapPos();
-        }
         Widgets.text(Fonts.small, Theme.MUTED, "1.  Open " + code.verificationUri().replace("https://", ""));
         Widgets.text(Fonts.small, Theme.MUTED, "2.  Enter this code");
         ImGui.dummy(0, px(4));
@@ -450,6 +453,41 @@ final class Dialogs {
             } catch (IOException e) {
                 this.ui.fail(e);
             }
+            ImGui.closeCurrentPopup();
+        }, true);
+        this.end();
+    }
+
+    private void drawTrustPatch() {
+        if (!this.begin(TRUST_PATCH, 540, "Are you sure you trust this patch?",
+            "This is not an official ABNW release. A patch replaces Minecraft's own code, so it can do anything your "
+                + "account on this computer can. Only continue if it came straight from someone on the ABNW team you trust.")) {
+            return;
+        }
+        TestBuildImport.Candidate candidate = this.testBuild;
+        if (candidate == null) {
+            ImGui.closeCurrentPopup();
+            this.end();
+            return;
+        }
+        Release release = candidate.release();
+        float width = ImGui.getContentRegionAvailX();
+        ImGui.pushTextWrapPos(ImGui.getCursorPosX() + width);
+        Widgets.textWrapped(Fonts.small, Theme.MUTED, "File:  " + candidate.deltaFile().getFileName());
+        Widgets.textWrapped(Fonts.small, Theme.MUTED, "Build:  ABNW " + release.id + ", for Minecraft " + release.minecraft);
+        Widgets.textWrapped(Fonts.small, Theme.MUTED, "Libraries:  " + candidate.librariesSource());
+        ImGui.popTextWrapPos();
+        ImGui.dummy(0, px(4));
+        Widgets.text(Fonts.small, Theme.FAINT, "SHA-256, to compare with whoever sent it:");
+        String hash = release.delta.sha256;
+        Widgets.text(Fonts.mono, Theme.TEXT, hash.substring(0, 32));
+        Widgets.text(Fonts.mono, Theme.TEXT, hash.substring(32));
+        this.footerButtons("trust-cancel", () -> {
+            this.testBuild = null;
+            ImGui.closeCurrentPopup();
+        }, "trust-go", "I trust it, import", Icons.Icon.IMPORT, true, () -> {
+            this.testBuild = null;
+            this.ui.installTestBuild(candidate);
             ImGui.closeCurrentPopup();
         }, true);
         this.end();

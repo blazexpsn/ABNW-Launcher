@@ -10,6 +10,12 @@ public final class Release {
     public FileRef source = new FileRef();
     public FileRef target = new FileRef();
     public FileRef libraries = new FileRef();
+    /**
+     * A test build imported from a local .xdelta ({@link TestBuildImport}), not an official release. The player
+     * confirmed they trust it when importing it. Its patch only exists in the launcher's delta cache, so it is never
+     * downloaded.
+     */
+    public boolean imported;
 
     public static final class FileRef {
         public String url = "";

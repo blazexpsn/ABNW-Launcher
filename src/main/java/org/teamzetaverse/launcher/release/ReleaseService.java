@@ -43,6 +43,9 @@ public final class ReleaseService {
     public Resolved resolve(final Release listed) throws IOException {
         checkListed(listed);
         Release release = Json.GSON.fromJson(Json.GSON.toJson(listed), Release.class);
+        // Whatever was resolved here came from the release listing, even if the copy passed in (say, from a shared .abnw
+        // file) claims otherwise.
+        release.imported = false;
 
         String manifestText = fetchVerified(release.manifest);
         JsonObject manifest = Json.parseObject(manifestText);
@@ -70,7 +73,7 @@ public final class ReleaseService {
         return new Resolved(release, libraries);
     }
 
-    private static Release.FileRef fileRef(final JsonObject object) {
+    static Release.FileRef fileRef(final JsonObject object) {
         Release.FileRef ref = new Release.FileRef();
         if (object != null) {
             ref.size = Json.number(object, "size", -1);

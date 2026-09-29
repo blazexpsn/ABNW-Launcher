@@ -42,6 +42,7 @@ import org.teamzetaverse.launcher.launch.GameProcess;
 import org.teamzetaverse.launcher.minecraft.GameInstaller;
 import org.teamzetaverse.launcher.release.Release;
 import org.teamzetaverse.launcher.release.ReleaseService;
+import org.teamzetaverse.launcher.release.TestBuildImport;
 import org.teamzetaverse.launcher.task.Progress;
 import org.teamzetaverse.launcher.task.Tasks;
 import org.teamzetaverse.launcher.update.UpdateChecker;
@@ -624,11 +625,8 @@ public final class LauncherUi {
         }, ok -> this.loadCosmetics(), this::fail);
     }
 
-    private boolean primaryClientRejected;
-
-    MicrosoftAuth auth(final Account account) {
-        String clientId = account.msaClientId == null || account.msaClientId.isBlank() ? this.config.effectiveClientId() : account.msaClientId;
-        return new MicrosoftAuth(clientId);
+    MicrosoftAuth auth() {
+        return new MicrosoftAuth(this.config.effectiveClientId());
     }
 
     void play(final Instance instance) {
@@ -646,7 +644,7 @@ public final class LauncherUi {
         this.select(instance);
         this.tasks.submit("Launching " + instance.name, progress -> {
             progress.status("Signing in…");
-            this.auth(account).refresh(account, progress);
+            this.auth().refresh(account, progress);
             this.accounts.save();
             var installed = this.installer.install(instance.release, this.instances.readLibraries(instance), progress);
             progress.checkCancelled();
@@ -733,12 +731,7 @@ public final class LauncherUi {
     }
 
     void startSignIn() {
-        String fallback = this.config.fallbackClientId();
-        boolean usingFallback = this.primaryClientRejected && fallback != null;
-        this.signInWith(new MicrosoftAuth(usingFallback ? fallback : this.config.primaryClientId()), usingFallback);
-    }
-
-    private void signInWith(final MicrosoftAuth auth, final boolean fallback) {
+        MicrosoftAuth auth = this.auth();
         this.tasks.submit("Connecting to Microsoft", progress -> auth.requestDeviceCode(), code -> {
             Progress signIn = this.tasks.submit("Signing in", progress -> auth.completeDeviceCode(code, progress), account -> {
                 this.accounts.put(account);
@@ -748,33 +741,19 @@ public final class LauncherUi {
                 this.dialogs.signInFinished();
             }, error -> {
                 this.dialogs.signInFinished();
-                if (!this.fallBackAfter(error, fallback)) {
-                    this.fail(error);
-                }
-            });
-            this.dialogs.openSignIn(code, signIn, fallback);
-        }, error -> {
-            if (!this.fallBackAfter(error, fallback)) {
                 this.fail(error);
-            }
-        });
-    }
-
-    /** Retries with ABNW's own client ID when the primary one was refused. Returns false when there is nothing left to try. */
-    private boolean fallBackAfter(final Throwable error, final boolean alreadyFallback) {
-        String fallback = this.config.fallbackClientId();
-        if (alreadyFallback || fallback == null || !(error instanceof MicrosoftAuth.ClientRejectedException)) {
-            return false;
-        }
-        System.err.println("Primary Microsoft client ID refused, falling back: " + error.getMessage());
-        this.primaryClientRejected = true;
-        this.signInWith(new MicrosoftAuth(fallback), true);
-        return true;
+            });
+            this.dialogs.openSignIn(code, signIn);
+        }, this::fail);
     }
 
     void importArchive() {
         Path archive = Desktop.chooseArchiveToOpen();
         if (archive == null) {
+            return;
+        }
+        if (TestBuildImport.isTestBuild(archive)) {
+            this.importTestBuild(archive);
             return;
         }
         this.tasks.submit("Importing " + archive.getFileName(), progress -> {
@@ -789,7 +768,36 @@ public final class LauncherUi {
         }, this::fail);
     }
 
+    /**
+     * Checks a local .xdelta, then asks the player whether they trust it. Nothing is copied or created until they say
+     * yes ({@link #installTestBuild}). Official releases never come through here, so they are never asked about.
+     */
+    private void importTestBuild(final Path deltaFile) {
+        this.tasks.submit("Checking " + deltaFile.getFileName(),
+            progress -> TestBuildImport.inspect(deltaFile, this.releases, progress),
+            this.dialogs::openTrustPatch,
+            this::fail);
+    }
+
+    void installTestBuild(final TestBuildImport.Candidate candidate) {
+        this.tasks.submit("Importing " + candidate.release().displayName(), progress -> {
+            TestBuildImport.install(candidate, this.paths.deltas());
+            return this.instances.create(candidate.release().displayName(),
+                new ReleaseService.Resolved(candidate.release(), candidate.librariesJson()),
+                this.config.defaultMemoryMb, this.config.defaultRenderer);
+        }, created -> {
+            this.select(created);
+            this.navigate(Page.INSTANCES);
+            this.prepare(created);
+        }, this::fail);
+    }
+
     void exportArchive(final Instance instance) {
+        if (instance.release.imported) {
+            this.fail(new java.io.IOException(instance.name + " runs an imported test build, which nobody else could "
+                + "install from an export. Share the build's .xdelta and .json instead."));
+            return;
+        }
         Path target = Desktop.chooseArchiveToSave(instance.name.replaceAll("[^A-Za-z0-9 ._-]", ""));
         if (target == null) {
             return;

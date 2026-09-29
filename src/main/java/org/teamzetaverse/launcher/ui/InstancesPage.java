@@ -216,6 +216,10 @@ final class InstancesPage {
         ImGui.setCursorPosY(ImGui.getCursorPosY() - px(4));
         Widgets.pill(instance.release.displayName(), Theme.EMBER, Theme.EMBER, 0.14f, Icons.Icon.CUBE);
         ImGui.sameLine(0, px(6));
+        if (instance.release.imported) {
+            Widgets.pill("Test build", Theme.SUN, Theme.SUN, 0.12f, Icons.Icon.ALERT);
+            ImGui.sameLine(0, px(6));
+        }
         Widgets.pill(LauncherUi.RENDERER_LABELS[indexOf(LauncherUi.RENDERERS, instance.renderer)], Theme.MUTED, 0xFFFFFF, 0.06f, Icons.Icon.CHIP);
         ImGui.sameLine(0, px(6));
         if (process != null) {

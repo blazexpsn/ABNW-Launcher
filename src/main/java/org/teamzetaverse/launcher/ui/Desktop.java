@@ -41,9 +41,10 @@ final class Desktop {
 
     static Path chooseArchiveToOpen() {
         try (MemoryStack stack = MemoryStack.stackPush()) {
-            PointerBuffer filters = stack.mallocPointer(1);
-            filters.put(stack.UTF8("*.abnw")).flip();
-            String chosen = TinyFileDialogs.tinyfd_openFileDialog("Import an ABNW instance", "", filters, "ABNW instance (*.abnw)", false);
+            PointerBuffer filters = stack.mallocPointer(2);
+            filters.put(stack.UTF8("*.abnw")).put(stack.UTF8("*.xdelta")).flip();
+            String chosen = TinyFileDialogs.tinyfd_openFileDialog("Import an ABNW instance or test build", "", filters,
+                "ABNW instance or test build (*.abnw, *.xdelta)", false);
             return chosen == null ? null : Path.of(chosen);
         }
     }
