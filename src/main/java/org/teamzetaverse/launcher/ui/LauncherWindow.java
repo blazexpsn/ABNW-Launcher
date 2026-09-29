@@ -5,6 +5,7 @@ import static org.lwjgl.opengl.GL11.*;
 
 import imgui.ImGui;
 import imgui.ImGuiIO;
+import imgui.callback.ImStrConsumer;
 import imgui.gl3.ImGuiImplGl3;
 import imgui.glfw.ImGuiImplGlfw;
 import java.io.IOException;
@@ -20,7 +21,19 @@ import org.lwjgl.system.MemoryUtil;
 import org.teamzetaverse.launcher.util.OperatingSystem;
 
 public final class LauncherWindow {
-    private final ImGuiImplGlfw imguiGlfw = new ImGuiImplGlfw();
+    private final ImGuiImplGlfw imguiGlfw = new ImGuiImplGlfw() {
+        // Every ImGui clipboard write (the copy buttons, Ctrl+C in text fields) lands here. The stock backend crashes the
+        // JVM on anything over 64 KB, such as a running game's log; see Clipboard.set.
+        @Override
+        protected ImStrConsumer setClipboardTextFn() {
+            return new ImStrConsumer() {
+                @Override
+                public void accept(final String text) {
+                    Clipboard.set(text);
+                }
+            };
+        }
+    };
     private final ImGuiImplGl3 imguiGl3 = new ImGuiImplGl3();
     private long window;
 
