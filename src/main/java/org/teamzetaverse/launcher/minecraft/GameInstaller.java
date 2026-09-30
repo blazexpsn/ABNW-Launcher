@@ -1,5 +1,6 @@
 package org.teamzetaverse.launcher.minecraft;
 
+import java.nio.charset.StandardCharsets;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -20,6 +21,8 @@ import org.teamzetaverse.launcher.util.Json;
 import org.teamzetaverse.launcher.util.OperatingSystem;
 
 public final class GameInstaller {
+
+    private static final String SHADOWED_ASSET = "minecraft/sounds.json";
     private static final String VERSION_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
     private static final String RESOURCES_URL = "https://resources.download.minecraft.net/";
 
@@ -63,7 +66,8 @@ public final class GameInstaller {
         if (!Hashing.matches(indexPath, Json.string(assetIndexRef, "sha1"), -1)) {
             Http.download(Json.string(assetIndexRef, "url"), indexPath, Json.string(assetIndexRef, "sha1"), null);
         }
-        JsonObject objects = Json.object(Json.readObject(indexPath), "objects");
+        JsonObject indexJson = Json.readObject(indexPath);
+        JsonObject objects = Json.object(indexJson, "objects");
         Downloads assetDownloads = new Downloads();
         java.util.Set<String> seen = new java.util.HashSet<>();
         if (objects != null) {
@@ -78,6 +82,8 @@ public final class GameInstaller {
             }
         }
         assetDownloads.run("Downloading assets", progress);
+
+        String instanceAssetIndexId = this.instanceAssetIndex(assetIndexId, indexJson, release);
 
         String loggingArgument = null;
         JsonObject logging = Json.object(Json.object(versionJson, "logging"), "client");
@@ -100,7 +106,29 @@ public final class GameInstaller {
 
         List<Path> classpath = new ArrayList<>(libraries.values());
         classpath.add(abnwJar);
-        return new InstalledGame(versionJson, classpath, this.paths.libraries(), this.paths.assets(), assetIndexId, java, loggingArgument);
+        return new InstalledGame(
+            versionJson, classpath, this.paths.libraries(), this.paths.assets(), instanceAssetIndexId, java, loggingArgument);
+    }
+
+    private String instanceAssetIndex(final String assetIndexId, final JsonObject indexJson, final Release release)
+        throws IOException {
+
+        JsonObject objects = Json.object(indexJson, "objects");
+
+        if (objects == null || !objects.has(SHADOWED_ASSET)) {
+            return assetIndexId;
+        }
+
+        String id = Release.safe(assetIndexId) + "-" + Release.safe(release.id);
+        Path path = this.paths.assets().resolve("indexes").resolve(id + ".json");
+
+        JsonObject copy = indexJson.deepCopy();
+        Json.object(copy, "objects").remove(SHADOWED_ASSET);
+
+        Files.createDirectories(path.getParent());
+        Files.writeString(path, copy.toString(), StandardCharsets.UTF_8);
+
+        return id;
     }
 
     private JsonObject versionJson(final String mc, final Path path) throws IOException {
