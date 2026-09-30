@@ -1,7 +1,15 @@
 {
   "formatVersion": 1,
-
   "news": [
+    {
+      "id": "the-sift-coming",
+      "title": "The Sift arrives next month",
+      "summary": "A whole dimension below the deep dark, arriving in October. Step through a sift portal into overgrown forests and soul canyons lit by ichor, meet the sifters, blubs, echo golems and the singer, and find out what the dark sniffers are for. Bring siftite home if you can carry it.",
+      "date": "2026-09-30",
+      "tag": "Gameplay",
+      "url": "",
+      "image": ""
+    },
     {
       "id": "linux-flatpaks",
       "title": "Flatpaks for Linux are here",
@@ -39,7 +47,6 @@
       "image": ""
     }
   ],
-
   "announcements": [
     {
       "id": "welcome-1",
@@ -55,7 +62,6 @@
       "actionUrl": ""
     }
   ],
-
   "teasers": [
     {
       "text": "The horizon is further away than you think.",
@@ -68,8 +74,11 @@
     {
       "text": "Titanium is only the first new metal.",
       "hint": "Soon"
+    },
+    {
+      "text": "Souls are the oldest magic, and nothing spends them cheaply.",
+      "hint": "Soon"
     }
   ],
-
   "screenshots": []
 }
