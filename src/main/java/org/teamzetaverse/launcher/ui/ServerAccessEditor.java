@@ -6,6 +6,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import imgui.ImGui;
+import imgui.type.ImInt;
 import imgui.type.ImString;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -38,8 +39,8 @@ final class ServerAccessEditor {
     private final ImString groupId = new ImString(256);
     private final ImString parents = new ImString(4096);
     private final ImString nodes = new ImString(32768);
-    private final int[] weight = {0};
-    private int applies;
+    private final ImInt weight = new ImInt(0);
+    private final ImInt applies = new ImInt(0);
     private final ImString playerGroups = new ImString(4096);
     private final ImString playerNodes = new ImString(32768);
     private final ImString search = new ImString(256);
@@ -162,13 +163,13 @@ final class ServerAccessEditor {
         JsonObject group = this.groups.get(id);
         this.parents.set(String.join("\n", ServerAdministration.strings(group.getAsJsonArray("inherits"))));
         this.nodes.set(String.join("\n", ServerAdministration.strings(group.getAsJsonArray("permissions"))));
-        this.weight[0] = (int) Json.number(group, "weight", 0);
-        JsonObject to = group.getAsJsonObject("applies_to"); this.applies = 0;
-        if (to != null && to.has("everyone") && to.get("everyone").getAsBoolean()) this.applies = 1;
+        this.weight.set((int) Json.number(group, "weight", 0));
+        JsonObject to = group.getAsJsonObject("applies_to"); this.applies.set(0);
+        if (to != null && to.has("everyone") && to.get("everyone").getAsBoolean()) this.applies.set(1);
         else if (to != null && to.has("op_level")) {
             String value = to.get("op_level").getAsString();
-            this.applies = switch (value) { case "1", "moderators" -> 2; case "2", "gamemasters" -> 3;
-                case "3", "admins" -> 4; case "4", "owners" -> 5; default -> 0; };
+            this.applies.set(switch (value) { case "1", "moderators" -> 2; case "2", "gamemasters" -> 3;
+                case "3", "admins" -> 4; case "4", "owners" -> 5; default -> 0; });
         }
     }
 
@@ -179,15 +180,14 @@ final class ServerAccessEditor {
             ImGui.endCombo();
         }
         if (Widgets.secondary("group-new", "New group", Icons.Icon.PLUS)) {
-            this.selectedGroup = null; this.groupId.set("myserver:builder"); this.weight[0] = 10;
-            this.parents.set("minecraft:default"); this.nodes.set(""); this.applies = 0;
+            this.selectedGroup = null; this.groupId.set("myserver:builder"); this.weight.set(10);
+            this.parents.set("minecraft:default"); this.nodes.set(""); this.applies.set(0);
         }
         Widgets.fieldLabel("Group id", "namespace:name, for example myserver:builder");
         ImGui.beginDisabled(this.selectedGroup != null);
         ImGui.inputText("##group-id", this.groupId); ImGui.endDisabled();
         ImGui.inputInt("Weight", this.weight);
-        int[] selected = {this.applies};
-        if (ImGui.combo("Automatically includes", selected, APPLIES)) this.applies = selected[0];
+        ImGui.combo("Automatically includes", this.applies, APPLIES);
         Widgets.fieldLabel("Inherits", "One group id per line. Groups from other datapacks can be entered here.");
         ImGui.inputTextMultiline("##group-parents", this.parents, -1, px(65));
         this.drawNodes(this.nodes, "group");
@@ -195,7 +195,7 @@ final class ServerAccessEditor {
             String id = this.groupId.get().trim();
             Map<String, JsonObject> updated = new LinkedHashMap<>(this.groups);
             updated.put(ServerAdministration.groupId(id), ServerAdministration.group(ServerAdministration.lines(this.parents.get()),
-                this.weight[0], this.applies, ServerAdministration.lines(this.nodes.get())));
+                this.weight.get(), this.applies.get(), ServerAdministration.lines(this.nodes.get())));
             ServerAdministration.saveGroups(instance, this.gameJar(instance), updated);
             this.groups = updated; this.selectedGroup = id;
         }, "Saved group datapack. Restart the server to load it.");
