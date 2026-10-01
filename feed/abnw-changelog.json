@@ -2,6 +2,14 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.37",
+      "date": "2026-10-01",
+      "title": "Public Steam server visibility fix",
+      "changes": [
+        "Fixed public dedicated servers being missing from the Public Servers browser even after Steam hosting connected and the server reported that it was listed. Advertisement lobbies now remain joinable so Steam includes them in searches; players still connect directly to the dedicated server, which enforces its normal admission rules."
+      ]
+    },
+    {
       "version": "1.0.9.36",
       "date": "2026-10-01",
       "title": "Steam dedicated-server discovery fix",
