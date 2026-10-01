@@ -2,6 +2,42 @@
   "formatVersion": 1,
   "entries": [
     {
+      "version": "1.0.9.36",
+      "date": "2026-10-01",
+      "title": "Steam dedicated-server discovery fix",
+      "changes": [
+        "Fixed public dedicated servers failing to discover an already-running Steam client. Steam hosting could connect and print a joining address, but public listing then failed with \"No SteamUser023\" and incorrectly reported that Steam was out of date. Public servers now initialise the signed-in client before the anonymous server connection, allowing public discovery to start."
+      ]
+    },
+    {
+      "version": "1.0.9.35",
+      "date": "2026-10-01",
+      "title": "The Sift: a new dimension, Soul magic and artifacts",
+      "changes": [
+        "The Sift, adapted from Mielon's dimension, is now part of ABNW. Explore Sift Wastes, overgrown clearings and forests, slopes and peaks, Ichor-Snowy Peaks, Siftslate Slopes and Peaks, and the Sift Deep Dark.",
+        "The ancient city's reinforced-deepslate frame has somewhere to go. Blow a goat horn nearby to call a Singer, then play the sonorous console's tune to open the portal. Playing the tune backwards closes it. Note blocks above sonorous deepslate have their own sounds and coloured particles.",
+        "The Sift has its own drifting ribbon sky, clouds, fog, sounds and day-night cycle. Day and night fade into each other, and weather belongs to the dimension you are in. /weather can also target a dimension explicitly.",
+        "Find soul canyons, bare and lush monoliths, cliff arches and abandoned portals. Abandoned portal chests hold Sift supplies, Soul spell tomes and rare artifacts. /locate can find the main Sift portal and abandoned portals.",
+        "Overgrown willow brings a full wood family: logs, stripped wood, planks, doors, trapdoors, fences, shelves, signs, hanging signs, boats and chest boats. Its slabs and stairs support ABNW's vertical placements.",
+        "New terrain and plants include siftslate, reinforced siftslate, healthy and dry sculk, growth blocks, hanging roots, stalks, fronds, overgrown chard, lotus, sunburst plants, whisperbloom and sculkflowers. Sift soils support their own vegetation and crops, and willow saplings can grow back into the canopy.",
+        "The Sift has its own coal, diamond, emerald and titanium ores, plus charoite and siftite. Charoite can replace lapis at the enchanting table: it costs 20 more levels and can raise enchantments above their normal ceiling. An item enchanted this way cannot subsequently be combined or repaired on an anvil.",
+        "Siftite nuggets craft into ingots. Use a Siftite Upgrade template and an ingot to turn netherite equipment into siftite armour, tools, swords and spears. Siftite lost when you die in The Sift returns through a small rift, arriving back in your inventory one stack at a time.",
+        "Ichor fills lakes and cave springs and appears as snow on the peaks. It slows movement and grants regeneration while you stand in it. Collect it with a bucket, fill cauldrons and ichorlog compatible blocks; it cannot make an infinite source. Ichor snow and snowballs are also available.",
+        "New cauldron potions use Sift ingredients. Rooting trades movement speed for knockback resistance; Sculk Sense reveals nearby living creatures through walls.",
+        "Dark Sniffers hunt players and ordinary sniffers, pulling targets toward them with sonic waves. Sifters roam the dimension and wind up before biting, giving you time to dodge; their meat can be cooked.",
+        "Blubs are hopping companions that can be tamed with soul blocks. Wild blubs nearby retaliate together when one is hurt.",
+        "Echo Golems search soul canyons for soul blocks and carry them to Singers. Bond with a golem using an echo shard and it brings its finds to you instead.",
+        "Rifts offer another route between The Sift and the Overworld, including a way home if your built portal is lost. Their return routes remember where each traveller came from. The Rift music disc and new Sift advancements accompany exploration, creatures, enchanting and equipment.",
+        "Seven new spells form the Soul school, learned from tomes found in abandoned portal chests. They use your existing wands and staffs, with their own costs and cooldowns.",
+        "Swap exchanges your position with the target. Resonance sends a sonic wave that pulls creatures toward you. Discord turns nearby mobs against one another.",
+        "Soul Ward absorbs incoming damage. Sever makes a mob drop its held equipment and armour without killing it. Reveal briefly marks nearby ores and soul blocks through the stone.",
+        "Open Rift is a ritual that tears open a route between dimensions where you stand, usable by anyone who walks through it.",
+        "Four new artifacts can be found in abandoned portal chests. Use them in the charm slot or a hand; keeping them in your backpack does not activate their powers.",
+        "Echo Golem's Palm draws loose items toward you from up to nine blocks away. Canyon Ear points toward nearby generated soul canyons with a trail of soul motes, reaching up to 512 blocks.",
+        "Veil of Whispers makes pursuing mobs lose you once they are more than twelve blocks away. Riftwarden's Tithe draws nearby experience orbs toward you; its curse drains your air supply, shortening the time you can spend underwater."
+      ]
+    },
+    {
       "version": "1.0.9.24",
       "date": "2026-09-27",
       "title": "ABNW's own look: every block redrawn",
