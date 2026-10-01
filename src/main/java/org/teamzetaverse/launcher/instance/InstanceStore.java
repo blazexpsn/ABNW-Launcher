@@ -51,6 +51,9 @@ public final class InstanceStore {
                     if (instance.penguin == null) {
                         instance.penguin = new java.util.LinkedHashMap<>();
                     }
+                    if (instance.kind == null || instance.kind.isBlank()) {
+                        instance.kind = Instance.KIND_CLIENT;
+                    }
                     this.instances.add(instance);
                 } catch (IOException e) {
                     System.err.println("Skipping instance " + folder.getFileName() + ": " + e.getMessage());
@@ -66,13 +69,26 @@ public final class InstanceStore {
         return this.instances;
     }
 
+    public List<Instance> clients() {
+        return this.instances.stream().filter(i -> !i.isServer()).toList();
+    }
+
+    public List<Instance> servers() {
+        return this.instances.stream().filter(Instance::isServer).toList();
+    }
+
     public Optional<Instance> find(final String id) {
         return this.instances.stream().filter(i -> i.id.equals(id)).findFirst();
     }
 
     public Instance create(final String name, final ReleaseService.Resolved resolved, final int memoryMb, final String renderer) throws IOException {
+        return this.create(name, resolved, memoryMb, renderer, Instance.KIND_CLIENT);
+    }
+
+    public Instance create(final String name, final ReleaseService.Resolved resolved, final int memoryMb, final String renderer, final String kind) throws IOException {
         Path folder = this.newFolder(name);
         Instance instance = new Instance();
+        instance.kind = Instance.KIND_SERVER.equals(kind) ? Instance.KIND_SERVER : Instance.KIND_CLIENT;
         instance.id = folder.getFileName().toString();
         instance.name = name.isBlank() ? resolved.release().displayName() : name.trim();
         instance.release = resolved.release();

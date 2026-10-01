@@ -76,7 +76,7 @@ final class InstancesPage {
     }
 
     void draw() {
-        List<Instance> all = this.ui.instances.all();
+        List<Instance> all = this.ui.instances.clients();
         Widgets.text(Fonts.title, Theme.TEXT, "Instances");
         ImGui.sameLine();
         float newWidth = Widgets.textWidth(Fonts.button, "New instance") + px(17 + 9 + 36);

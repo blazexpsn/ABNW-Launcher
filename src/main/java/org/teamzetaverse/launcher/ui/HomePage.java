@@ -95,7 +95,7 @@ final class HomePage {
 
         float buttonHeight = u * 29f;
         float playWidth = px(210);
-        boolean hasPicker = selected.isPresent() && !this.ui.instances.all().isEmpty();
+        boolean hasPicker = selected.isPresent() && !this.ui.instances.clients().isEmpty();
         float pickerWidth = hasPicker ? px(260) : 0;
         float buttonsY = horizon - buttonHeight + u;
         float rowX = x;
@@ -189,7 +189,7 @@ final class HomePage {
             ImGui.pushStyleVar(ImGuiStyleVar.WindowPadding, px(8), px(8));
             ImGui.pushStyleVar(ImGuiStyleVar.ItemSpacing, px(4), px(4));
             if (ImGui.beginPopup("hero-instances")) {
-                for (Instance instance : this.ui.instances.all()) {
+                for (Instance instance : this.ui.instances.clients()) {
                     boolean current = instance.id.equals(selected.get().id);
                     if (this.ui.menuItem("pick-" + instance.id, current ? Icons.Icon.CHECK : Icons.Icon.CUBE,
                         instance.name + "  ·  " + instance.release.displayName(), current)) {

@@ -27,6 +27,7 @@ import org.teamzetaverse.launcher.minecraft.Rules;
 import org.teamzetaverse.launcher.util.Json;
 
 public final class GameLauncher {
+    private static final String SERVER_MAIN_CLASS = "net.minecraft.server.Main";
     private static final Pattern TOKEN = Pattern.compile("\\$\\{([^}]+)}");
 
     private final LauncherPaths paths;
@@ -118,6 +119,73 @@ public final class GameLauncher {
         running.append("[launcher] Starting " + instance.name + " (" + instance.release.displayName() + ", renderer " + renderer + ")");
         running.append("[launcher] " + redact(command, account));
         return running;
+    }
+
+    public GameProcess launchServer(final Instance instance, final InstalledGame game, final Consumer<GameProcess> onExit)
+        throws IOException {
+        Files.createDirectories(instance.gameFolder());
+
+        if (!eulaAccepted(instance)) {
+            throw new IOException("The Minecraft EULA has not been accepted for " + instance.name + ".");
+        }
+
+        List<String> command = new ArrayList<>();
+        command.add(game.javaExecutable().toString());
+
+        int memory = instance.memoryMb > 0 ? instance.memoryMb : this.config.defaultMemoryMb;
+        command.add("-Xms" + Math.min(512, memory) + "m");
+        command.add("-Xmx" + memory + "m");
+
+        if (game.loggingArgument() != null) {
+            command.add(game.loggingArgument());
+        }
+        if (instance.extraJvmArgs != null && !instance.extraJvmArgs.isBlank()) {
+            try {
+                command.addAll(org.teamzetaverse.launcher.util.CommandLine.split(instance.extraJvmArgs));
+            } catch (IllegalArgumentException e) {
+                throw new IOException("The extra Java arguments for " + instance.name + " are invalid: " + e.getMessage());
+            }
+        }
+
+        if (instance.publicServer) {
+            command.add("-Dabnw.steam=true");
+            command.add("-Dabnw.steam.public=true");
+        }
+
+        command.add("-cp");
+        command.add(game.classpath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+        command.add(SERVER_MAIN_CLASS);
+        command.add("--nogui");
+
+        ProcessBuilder builder = new ProcessBuilder(command).directory(instance.gameFolder().toFile()).redirectErrorStream(true);
+        steamOverlayEnvironment(builder.environment());
+        Path log = this.paths.logs().resolve(instance.id + "-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".log");
+        Process process = builder.start();
+        GameProcess running = new GameProcess(instance.id, process, log, onExit);
+        running.append("[launcher] Starting server " + instance.name + " (" + instance.release.displayName() + ")");
+        running.append("[launcher] " + String.join(" ", command));
+        return running;
+    }
+
+    public static boolean eulaAccepted(final Instance instance) throws IOException {
+        Path eula = instance.eulaFile();
+        if (!Files.isRegularFile(eula)) {
+            return false;
+        }
+        for (String line : Files.readAllLines(eula, java.nio.charset.StandardCharsets.UTF_8)) {
+            if (line.trim().toLowerCase(java.util.Locale.ROOT).replace(" ", "").equals("eula=true")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void acceptEula(final Instance instance) throws IOException {
+        Files.createDirectories(instance.gameFolder());
+        Files.writeString(instance.eulaFile(),
+            "# Accepted through the ABNW launcher. See https://aka.ms/MinecraftEULA" + System.lineSeparator()
+                + "eula=true" + System.lineSeparator(),
+            java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static void steamOverlayEnvironment(final Map<String, String> environment) {

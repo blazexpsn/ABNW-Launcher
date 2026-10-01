@@ -59,6 +59,7 @@ final class World {
             case HOME -> 0f;
             case NEWS -> 150f;
             case INSTANCES -> 290f;
+            case SERVERS -> 400f;
             case COSMETICS -> 510f;
             case SETTINGS -> 700f;
         };

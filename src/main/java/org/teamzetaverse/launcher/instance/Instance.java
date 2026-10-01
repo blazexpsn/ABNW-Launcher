@@ -11,10 +11,16 @@ public final class Instance {
     public static final String GAME_FOLDER = "minecraft";
     public static final String ICON_PENGUIN = "penguin";
     public static final String ICON_IMAGE = "image";
+    public static final String KIND_CLIENT = "client";
+    public static final String KIND_SERVER = "server";
+    public static final String SERVER_PROPERTIES = "server.properties";
+    public static final String EULA_FILE = "eula.txt";
 
-    public int formatVersion = 1;
+    public int formatVersion = 2;
     public String id = "";
     public String name = "";
+    public String kind = KIND_CLIENT;
+    public boolean publicServer;
     public Release release = new Release();
     public String renderer = "auto";
     public int memoryMb;
@@ -43,8 +49,20 @@ public final class Instance {
         return this.folder.resolve(this.iconFile);
     }
 
+    public boolean isServer() {
+        return KIND_SERVER.equals(this.kind);
+    }
+
     public Path gameFolder() {
         return this.folder.resolve(GAME_FOLDER);
+    }
+
+    public Path serverPropertiesFile() {
+        return this.gameFolder().resolve(SERVER_PROPERTIES);
+    }
+
+    public Path eulaFile() {
+        return this.gameFolder().resolve(EULA_FILE);
     }
 
     public Path librariesFile() {

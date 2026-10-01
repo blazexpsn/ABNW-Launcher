@@ -49,7 +49,7 @@ import org.teamzetaverse.launcher.update.UpdateChecker;
 
 public final class LauncherUi {
     enum Page {
-        HOME, INSTANCES, NEWS, COSMETICS, SETTINGS
+        HOME, INSTANCES, SERVERS, NEWS, COSMETICS, SETTINGS
     }
 
     enum InstallState {
@@ -88,6 +88,7 @@ public final class LauncherUi {
     });
     private final HomePage home;
     private final InstancesPage instancesPage;
+    private final ServersPage serversPage;
     private final NewsPage newsPage;
     private final CosmeticsPage cosmeticsPage;
     final PenguinWardrobe wardrobe;
@@ -125,6 +126,7 @@ public final class LauncherUi {
         this.dialogs = new Dialogs(this);
         this.home = new HomePage(this);
         this.instancesPage = new InstancesPage(this);
+        this.serversPage = new ServersPage(this);
         this.newsPage = new NewsPage(this);
         this.cosmeticsPage = new CosmeticsPage(this);
         this.wardrobe = new PenguinWardrobe(this);
@@ -231,6 +233,7 @@ public final class LauncherUi {
         float tabY = y + u * 4;
         tx = this.drawTab(Page.HOME, Icons.Icon.HOME, "Home", tx, tabY, tabH);
         tx = this.drawTab(Page.INSTANCES, Icons.Icon.INSTANCES, "Instances", tx, tabY, tabH);
+        tx = this.drawTab(Page.SERVERS, Icons.Icon.SERVERS, "Servers", tx, tabY, tabH);
         tx = this.drawTab(Page.NEWS, Icons.Icon.NEWS, "News", tx, tabY, tabH);
         tx = this.drawTab(Page.COSMETICS, Icons.Icon.COSMETICS, "Cosmetics", tx, tabY, tabH);
         this.drawTab(Page.SETTINGS, Icons.Icon.SETTINGS, "Settings", tx, tabY, tabH);
@@ -467,6 +470,7 @@ public final class LauncherUi {
             switch (this.page) {
                 case HOME -> this.home.draw();
                 case INSTANCES -> this.instancesPage.draw();
+                case SERVERS -> this.serversPage.draw();
                 case NEWS -> this.newsPage.draw();
                 case COSMETICS -> this.cosmeticsPage.draw();
                 case SETTINGS -> this.settingsPage.draw();
@@ -549,7 +553,7 @@ public final class LauncherUi {
                 return found;
             }
         }
-        return this.instances.all().stream().max(Comparator.comparingLong(i -> Math.max(i.lastPlayed, i.created)));
+        return this.instances.clients().stream().max(Comparator.comparingLong(i -> Math.max(i.lastPlayed, i.created)));
     }
 
     void select(final Instance instance) {
@@ -655,6 +659,39 @@ public final class LauncherUi {
             instance.lastPlayed = System.currentTimeMillis();
             this.saveQuietly(instance);
             this.installCache.clear();
+        }, this::fail);
+    }
+
+    void startServer(final Instance instance) {
+        this.tasks.submit("Starting " + instance.name, progress -> {
+            var installed = this.installer.install(instance.release, this.instances.readLibraries(instance), progress);
+            progress.checkCancelled();
+            progress.stage("Starting the server…", 0);
+            return this.gameLauncher.launchServer(instance, installed, exited -> this.tasks.onUi(() -> this.serverExited(instance, exited)));
+        }, process -> {
+            this.running.put(instance.id, process);
+            instance.lastPlayed = System.currentTimeMillis();
+            this.saveQuietly(instance);
+            this.installCache.clear();
+        }, this::fail);
+    }
+
+    private void serverExited(final Instance instance, final GameProcess process) {
+        this.running.remove(instance.id, process);
+        instance.totalPlayMillis += System.currentTimeMillis() - process.startedMillis();
+        this.saveQuietly(instance);
+        this.serversPage.rememberLog(instance, process.lines());
+    }
+
+    void createServer(final String name, final Release release, final int memory) {
+        this.tasks.submit("Creating " + name, progress -> {
+            progress.status("Fetching " + release.displayName() + "…");
+            ReleaseService.Resolved resolved = this.releases.resolve(release);
+            return this.instances.create(name, resolved, memory, "auto", Instance.KIND_SERVER);
+        }, created -> {
+            this.navigate(Page.SERVERS);
+            this.serversPage.select(created);
+            this.prepare(created);
         }, this::fail);
     }
 
@@ -908,7 +945,7 @@ public final class LauncherUi {
 
     private void scanScreenshotsUnsafe() {
         List<Path> screenshotFolders = new ArrayList<>();
-        for (Instance instance : List.copyOf(this.instances.all())) {
+        for (Instance instance : this.instances.clients()) {
             screenshotFolders.add(instance.gameFolder().resolve("screenshots"));
         }
         List<Path> files = new ArrayList<>();
