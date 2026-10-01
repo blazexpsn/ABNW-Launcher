@@ -337,11 +337,17 @@ final class Widgets {
     }
 
     static boolean toggle(final String id, final boolean value) {
+        return toggle(id, value, true);
+    }
+
+    static boolean toggle(final String id, final boolean value, final boolean enabled) {
         float w = px(42);
         float h = px(24);
         float x = ImGui.getCursorScreenPosX();
         float y = ImGui.getCursorScreenPosY();
+        ImGui.beginDisabled(!enabled);
         boolean clicked = ImGui.invisibleButton(id, w, h);
+        ImGui.endDisabled();
         boolean hovered = ImGui.isItemHovered();
         if (hovered) {
             ImGui.setMouseCursor(ImGuiMouseCursor.Hand);
@@ -349,19 +355,20 @@ final class Widgets {
         float t = Motion.to(id + "#on", value ? 1f : 0f, 18f);
         float hv = Motion.hover(id + "#hover", hovered);
         ImDrawList dl = ImGui.getWindowDrawList();
-        int glow = u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv));
+        float alpha = enabled ? 1f : .35f;
+        int glow = u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv), alpha);
         boolean drawn = Pixel.three(dl, Pixel.TOGGLE_OFF, x, y, x + w, y + h, 4, glow);
         if (drawn && t > 0.01f) {
-            Pixel.three(dl, Pixel.TOGGLE_ON, x, y, x + w, y + h, 4, u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv), t));
+            Pixel.three(dl, Pixel.TOGGLE_ON, x, y, x + w, y + h, 4, u32(Theme.mix(0xDDD2E6, 0xFFFFFF, hv), t * alpha));
         }
         float inset = Math.round(h / 9f);
         float side = h - inset * 2f;
         float kx = x + inset + t * (w - side - inset * 2f);
-        if (!drawn || !Pixel.sprite(dl, Pixel.TOGGLE_KNOB, kx, y + inset, kx + side, y + inset + side, 0f, 0f, 1f, 1f, u32(0xFFFFFF))) {
+        if (!drawn || !Pixel.sprite(dl, Pixel.TOGGLE_KNOB, kx, y + inset, kx + side, y + inset + side, 0f, 0f, 1f, 1f, u32(0xFFFFFF, alpha))) {
             int track = Theme.mix(Theme.mix(Theme.SURFACE_HOVER, 0x5A2690, hv), Theme.EMBER, t);
-            Pixel.rect(dl, x, y, x + w, y + h, u32(track));
+            Pixel.rect(dl, x, y, x + w, y + h, u32(track, alpha));
             float knob = h * 0.5f - px(3);
-            Pixel.dot(dl, x + h * 0.5f + t * (w - h), y + h * 0.5f, knob, u32(Theme.mix(Theme.MUTED, 0xFFFFFF, t)));
+            Pixel.dot(dl, x + h * 0.5f + t * (w - h), y + h * 0.5f, knob, u32(Theme.mix(Theme.MUTED, 0xFFFFFF, t), alpha));
         }
         return clicked;
     }

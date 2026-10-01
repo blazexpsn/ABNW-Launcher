@@ -63,6 +63,7 @@ public final class InstanceStore {
             System.err.println("Could not list instances: " + e.getMessage());
         }
         this.instances.sort(Comparator.comparing((Instance i) -> i.name.toLowerCase(Locale.ROOT)));
+        this.assignMissingServerPorts();
     }
 
     public List<Instance> all() {
@@ -77,6 +78,34 @@ public final class InstanceStore {
         return this.instances.stream().filter(Instance::isServer).toList();
     }
 
+    public int nextServerPort() {
+        java.util.Set<Integer> taken = new java.util.HashSet<>();
+        for (Instance instance : this.instances) {
+            if (instance.isServer() && instance.serverPort > 0) {
+                taken.add(instance.serverPort);
+            }
+        }
+        int port = Instance.DEFAULT_SERVER_PORT;
+        while (taken.contains(port) && port < 65535) {
+            port++;
+        }
+        return port;
+    }
+
+    private void assignMissingServerPorts() {
+        for (Instance instance : this.instances) {
+            if (!instance.isServer() || instance.serverPort > 0) {
+                continue;
+            }
+            instance.serverPort = this.nextServerPort();
+            try {
+                this.save(instance);
+            } catch (IOException e) {
+                System.err.println("Could not give " + instance.name + " its own port: " + e.getMessage());
+            }
+        }
+    }
+
     public Optional<Instance> find(final String id) {
         return this.instances.stream().filter(i -> i.id.equals(id)).findFirst();
     }
@@ -89,6 +118,9 @@ public final class InstanceStore {
         Path folder = this.newFolder(name);
         Instance instance = new Instance();
         instance.kind = Instance.KIND_SERVER.equals(kind) ? Instance.KIND_SERVER : Instance.KIND_CLIENT;
+        if (instance.isServer()) {
+            instance.serverPort = this.nextServerPort();
+        }
         instance.id = folder.getFileName().toString();
         instance.name = name.isBlank() ? resolved.release().displayName() : name.trim();
         instance.release = resolved.release();

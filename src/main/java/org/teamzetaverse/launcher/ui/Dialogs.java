@@ -42,6 +42,7 @@ final class Dialogs {
 
     private final ImString newName = new ImString(64);
     private int newRenderer;
+    private boolean newServer;
     private final int[] newMemory = {4096};
 
     private Instance target;
@@ -58,12 +59,19 @@ final class Dialogs {
     }
 
     void openNewInstance() {
+        this.newServer = false;
         this.newName.set("");
         this.newRenderer = InstancesPage.indexOf(LauncherUi.RENDERERS, this.ui.config.defaultRenderer);
         this.newMemory[0] = this.ui.config.defaultMemoryMb;
         this.preselectId = null;
         this.loadListing();
         this.pending = NEW_INSTANCE;
+    }
+
+    void openNewServer() {
+        this.openNewInstance();
+        this.newServer = true;
+        this.newMemory[0] = 2048;
     }
 
     void openChangeRelease(final Instance instance, final Release preselect) {
@@ -303,7 +311,7 @@ final class Dialogs {
     }
 
     private void drawNewInstance() {
-        if (!this.begin(NEW_INSTANCE, 640, "New instance", "Pick a build and ABNW takes care of the rest.")) {
+        if (!this.begin(NEW_INSTANCE, 640, this.newServer ? "New server" : "New instance", "Pick a build and ABNW takes care of the rest.")) {
             return;
         }
         Widgets.fieldLabel("Build", null);
@@ -317,22 +325,25 @@ final class Dialogs {
         Widgets.endField();
         ImGui.dummy(0, px(4));
         float half = (width - px(16)) * 0.5f;
+        if (!this.newServer) {
         ImGui.beginGroup();
         Widgets.fieldLabel("Renderer", null);
         this.newRenderer = Widgets.segmented("new-renderer", LauncherUi.RENDERER_LABELS, this.newRenderer, half);
         ImGui.endGroup();
         ImGui.sameLine(0, px(16));
+        }
         ImGui.beginGroup();
         Widgets.fieldLabel("Memory", null);
         Widgets.beginField();
-        ImGui.setNextItemWidth(half);
+        ImGui.setNextItemWidth(this.newServer ? width : half);
         ImGui.sliderInt("##new-memory", this.newMemory, 2048, SettingsPage.maxMemoryMb(), "%d MB");
         Widgets.endField();
         ImGui.endGroup();
 
-        this.footerButtons("new-cancel", ImGui::closeCurrentPopup, "new-create", "Create instance", Icons.Icon.PLUS, release != null, () -> {
+        this.footerButtons("new-cancel", ImGui::closeCurrentPopup, "new-create", this.newServer ? "Create server" : "Create instance", Icons.Icon.PLUS, release != null, () -> {
             String name = this.newName.get().trim().isEmpty() ? release.displayName() : this.newName.get().trim();
-            this.ui.createInstance(name, release, SettingsPage.roundTo(this.newMemory[0], 256), LauncherUi.RENDERERS[this.newRenderer]);
+            if (this.newServer) this.ui.createServer(name, release, SettingsPage.roundTo(this.newMemory[0], 256));
+            else this.ui.createInstance(name, release, SettingsPage.roundTo(this.newMemory[0], 256), LauncherUi.RENDERERS[this.newRenderer]);
             ImGui.closeCurrentPopup();
         }, false);
         this.end();

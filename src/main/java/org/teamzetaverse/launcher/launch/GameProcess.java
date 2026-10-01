@@ -100,4 +100,14 @@ public final class GameProcess {
     public void kill() {
         this.process.destroy();
     }
+
+    /** A dedicated server reads commands from stdin, including a graceful stop that saves its world. */
+    public synchronized void sendCommand(final String command) throws IOException {
+        if (!this.isAlive()) throw new IOException("The server has stopped.");
+        if (command.isBlank() || command.indexOf('\n') >= 0 || command.indexOf('\r') >= 0) {
+            throw new IOException("Enter one server command.");
+        }
+        this.process.getOutputStream().write((command.strip() + "\n").getBytes(StandardCharsets.UTF_8));
+        this.process.getOutputStream().flush();
+    }
 }

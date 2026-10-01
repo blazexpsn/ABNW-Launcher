@@ -1,0 +1,506 @@
+{
+  "minecraft": "26.1.2",
+  "nodes": [
+    {
+      "node": "*",
+      "description": "All permission nodes"
+    },
+    {
+      "node": "minecraft.*",
+      "description": "All game permissions"
+    },
+    {
+      "node": "minecraft.command.*",
+      "description": "All game commands"
+    },
+    {
+      "node": "minecraft.command.advancement",
+      "description": "Use /advancement"
+    },
+    {
+      "node": "minecraft.command.attribute",
+      "description": "Use /attribute"
+    },
+    {
+      "node": "minecraft.command.ban",
+      "description": "Use /ban"
+    },
+    {
+      "node": "minecraft.command.ban-ip",
+      "description": "Use /ban-ip"
+    },
+    {
+      "node": "minecraft.command.banlist",
+      "description": "Use /banlist"
+    },
+    {
+      "node": "minecraft.command.bossbar",
+      "description": "Use /bossbar"
+    },
+    {
+      "node": "minecraft.command.chase",
+      "description": "Use /chase"
+    },
+    {
+      "node": "minecraft.command.clear",
+      "description": "Use /clear"
+    },
+    {
+      "node": "minecraft.command.clone",
+      "description": "Use /clone"
+    },
+    {
+      "node": "minecraft.command.cubicblock",
+      "description": "Use /cubicblock"
+    },
+    {
+      "node": "minecraft.command.cubicteleport",
+      "description": "Use /cubicteleport"
+    },
+    {
+      "node": "minecraft.command.damage",
+      "description": "Use /damage"
+    },
+    {
+      "node": "minecraft.command.data",
+      "description": "Use /data"
+    },
+    {
+      "node": "minecraft.command.datapack",
+      "description": "Use /datapack"
+    },
+    {
+      "node": "minecraft.command.debug",
+      "description": "Use /debug"
+    },
+    {
+      "node": "minecraft.command.debugconfig",
+      "description": "Use /debugconfig"
+    },
+    {
+      "node": "minecraft.command.debugmobspawning",
+      "description": "Use /debugmobspawning"
+    },
+    {
+      "node": "minecraft.command.debugpath",
+      "description": "Use /debugpath"
+    },
+    {
+      "node": "minecraft.command.defaultgamemode",
+      "description": "Use /defaultgamemode"
+    },
+    {
+      "node": "minecraft.command.deop",
+      "description": "Use /deop"
+    },
+    {
+      "node": "minecraft.command.dialog",
+      "description": "Use /dialog"
+    },
+    {
+      "node": "minecraft.command.difficulty",
+      "description": "Use /difficulty"
+    },
+    {
+      "node": "minecraft.command.effect",
+      "description": "Use /effect"
+    },
+    {
+      "node": "minecraft.command.enchant",
+      "description": "Use /enchant"
+    },
+    {
+      "node": "minecraft.command.execute",
+      "description": "Use /execute"
+    },
+    {
+      "node": "minecraft.command.experience",
+      "description": "Use /experience"
+    },
+    {
+      "node": "minecraft.command.fetchprofile",
+      "description": "Use /fetchprofile"
+    },
+    {
+      "node": "minecraft.command.fill",
+      "description": "Use /fill"
+    },
+    {
+      "node": "minecraft.command.fillbiome",
+      "description": "Use /fillbiome"
+    },
+    {
+      "node": "minecraft.command.forceload",
+      "description": "Use /forceload"
+    },
+    {
+      "node": "minecraft.command.function",
+      "description": "Use /function"
+    },
+    {
+      "node": "minecraft.command.gamemode",
+      "description": "Use /gamemode"
+    },
+    {
+      "node": "minecraft.command.gamerule",
+      "description": "Use /gamerule"
+    },
+    {
+      "node": "minecraft.command.give",
+      "description": "Use /give"
+    },
+    {
+      "node": "minecraft.command.help",
+      "description": "Use /help"
+    },
+    {
+      "node": "minecraft.command.item",
+      "description": "Use /item"
+    },
+    {
+      "node": "minecraft.command.jfr",
+      "description": "Use /jfr"
+    },
+    {
+      "node": "minecraft.command.kick",
+      "description": "Use /kick"
+    },
+    {
+      "node": "minecraft.command.kill",
+      "description": "Use /kill"
+    },
+    {
+      "node": "minecraft.command.list",
+      "description": "Use /list"
+    },
+    {
+      "node": "minecraft.command.locate",
+      "description": "Use /locate"
+    },
+    {
+      "node": "minecraft.command.me",
+      "description": "Use /me"
+    },
+    {
+      "node": "minecraft.command.msg",
+      "description": "Use /msg"
+    },
+    {
+      "node": "minecraft.command.op",
+      "description": "Use /op"
+    },
+    {
+      "node": "minecraft.command.pardon",
+      "description": "Use /pardon"
+    },
+    {
+      "node": "minecraft.command.pardon-ip",
+      "description": "Use /pardon-ip"
+    },
+    {
+      "node": "minecraft.command.particle",
+      "description": "Use /particle"
+    },
+    {
+      "node": "minecraft.command.perf",
+      "description": "Use /perf"
+    },
+    {
+      "node": "minecraft.command.place",
+      "description": "Use /place"
+    },
+    {
+      "node": "minecraft.command.playsound",
+      "description": "Use /playsound"
+    },
+    {
+      "node": "minecraft.command.publish",
+      "description": "Use /publish"
+    },
+    {
+      "node": "minecraft.command.radio",
+      "description": "Use /radio"
+    },
+    {
+      "node": "minecraft.command.raid",
+      "description": "Use /raid"
+    },
+    {
+      "node": "minecraft.command.random",
+      "description": "Use /random"
+    },
+    {
+      "node": "minecraft.command.recipe",
+      "description": "Use /recipe"
+    },
+    {
+      "node": "minecraft.command.reload",
+      "description": "Use /reload"
+    },
+    {
+      "node": "minecraft.command.ride",
+      "description": "Use /ride"
+    },
+    {
+      "node": "minecraft.command.rotate",
+      "description": "Use /rotate"
+    },
+    {
+      "node": "minecraft.command.save-all",
+      "description": "Use /save-all"
+    },
+    {
+      "node": "minecraft.command.save-off",
+      "description": "Use /save-off"
+    },
+    {
+      "node": "minecraft.command.save-on",
+      "description": "Use /save-on"
+    },
+    {
+      "node": "minecraft.command.say",
+      "description": "Use /say"
+    },
+    {
+      "node": "minecraft.command.schedule",
+      "description": "Use /schedule"
+    },
+    {
+      "node": "minecraft.command.scoreboard",
+      "description": "Use /scoreboard"
+    },
+    {
+      "node": "minecraft.command.seed",
+      "description": "Use /seed"
+    },
+    {
+      "node": "minecraft.command.serverpack",
+      "description": "Use /serverpack"
+    },
+    {
+      "node": "minecraft.command.setblock",
+      "description": "Use /setblock"
+    },
+    {
+      "node": "minecraft.command.setidletimeout",
+      "description": "Use /setidletimeout"
+    },
+    {
+      "node": "minecraft.command.setworldspawn",
+      "description": "Use /setworldspawn"
+    },
+    {
+      "node": "minecraft.command.spawn_armor_trims",
+      "description": "Use /spawn_armor_trims"
+    },
+    {
+      "node": "minecraft.command.spawnpoint",
+      "description": "Use /spawnpoint"
+    },
+    {
+      "node": "minecraft.command.spectate",
+      "description": "Use /spectate"
+    },
+    {
+      "node": "minecraft.command.spell",
+      "description": "Use /spell"
+    },
+    {
+      "node": "minecraft.command.spreadplayers",
+      "description": "Use /spreadplayers"
+    },
+    {
+      "node": "minecraft.command.stop",
+      "description": "Use /stop"
+    },
+    {
+      "node": "minecraft.command.stopsound",
+      "description": "Use /stopsound"
+    },
+    {
+      "node": "minecraft.command.stopwatch",
+      "description": "Use /stopwatch"
+    },
+    {
+      "node": "minecraft.command.summon",
+      "description": "Use /summon"
+    },
+    {
+      "node": "minecraft.command.swing",
+      "description": "Use /swing"
+    },
+    {
+      "node": "minecraft.command.tag",
+      "description": "Use /tag"
+    },
+    {
+      "node": "minecraft.command.team",
+      "description": "Use /team"
+    },
+    {
+      "node": "minecraft.command.teammsg",
+      "description": "Use /teammsg"
+    },
+    {
+      "node": "minecraft.command.teleport",
+      "description": "Use /teleport"
+    },
+    {
+      "node": "minecraft.command.tell",
+      "description": "Use /tell"
+    },
+    {
+      "node": "minecraft.command.tellraw",
+      "description": "Use /tellraw"
+    },
+    {
+      "node": "minecraft.command.test",
+      "description": "Use /test"
+    },
+    {
+      "node": "minecraft.command.tick",
+      "description": "Use /tick"
+    },
+    {
+      "node": "minecraft.command.time",
+      "description": "Use /time"
+    },
+    {
+      "node": "minecraft.command.title",
+      "description": "Use /title"
+    },
+    {
+      "node": "minecraft.command.tm",
+      "description": "Use /tm"
+    },
+    {
+      "node": "minecraft.command.tp",
+      "description": "Use /tp"
+    },
+    {
+      "node": "minecraft.command.transfer",
+      "description": "Use /transfer"
+    },
+    {
+      "node": "minecraft.command.trigger",
+      "description": "Use /trigger"
+    },
+    {
+      "node": "minecraft.command.version",
+      "description": "Use /version"
+    },
+    {
+      "node": "minecraft.command.w",
+      "description": "Use /w"
+    },
+    {
+      "node": "minecraft.command.warden_spawn_tracker",
+      "description": "Use /warden_spawn_tracker"
+    },
+    {
+      "node": "minecraft.command.waypoint",
+      "description": "Use /waypoint"
+    },
+    {
+      "node": "minecraft.command.weather",
+      "description": "Use /weather"
+    },
+    {
+      "node": "minecraft.command.whitelist",
+      "description": "Use /whitelist"
+    },
+    {
+      "node": "minecraft.command.worldborder",
+      "description": "Use /worldborder"
+    },
+    {
+      "node": "minecraft.command.xp",
+      "description": "Use /xp"
+    },
+    {
+      "node": "minecraft.obsidian_chest.bypass",
+      "description": "Bypass Obsidian Chest locks (requires an explicit permission grant)"
+    },
+    {
+      "node": "moddingapi.command.*",
+      "description": "All API commands"
+    },
+    {
+      "node": "moddingapi.command.deop",
+      "description": "Use /deop"
+    },
+    {
+      "node": "moddingapi.command.mods",
+      "description": "Use /mods"
+    },
+    {
+      "node": "moddingapi.command.op",
+      "description": "Use /op"
+    },
+    {
+      "node": "moddingapi.command.permissions",
+      "description": "Use /permissions"
+    },
+    {
+      "node": "moddingapi.command.perms",
+      "description": "Use /perms"
+    },
+    {
+      "node": "moddingapi.command.registries",
+      "description": "Use /registries"
+    },
+    {
+      "node": "moddingapi.command.system",
+      "description": "Use /system"
+    }
+  ],
+  "groups": {
+    "minecraft:admin": {
+      "inherits": [
+        "minecraft:gamemaster"
+      ],
+      "weight": 30,
+      "applies_to": {
+        "op_level": "admins"
+      },
+      "permissions": []
+    },
+    "minecraft:default": {
+      "weight": 0,
+      "applies_to": {
+        "everyone": true
+      },
+      "permissions": []
+    },
+    "minecraft:gamemaster": {
+      "inherits": [
+        "minecraft:moderator"
+      ],
+      "weight": 20,
+      "applies_to": {
+        "op_level": "gamemasters"
+      },
+      "permissions": []
+    },
+    "minecraft:moderator": {
+      "inherits": [
+        "minecraft:default"
+      ],
+      "weight": 10,
+      "applies_to": {
+        "op_level": "moderators"
+      },
+      "permissions": []
+    },
+    "minecraft:owner": {
+      "inherits": [
+        "minecraft:admin"
+      ],
+      "weight": 40,
+      "applies_to": {
+        "op_level": "owners"
+      },
+      "permissions": []
+    }
+  }
+}

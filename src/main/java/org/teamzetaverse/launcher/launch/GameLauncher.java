@@ -148,6 +148,10 @@ public final class GameLauncher {
         }
 
         if (instance.publicServer) {
+            if (!org.teamzetaverse.launcher.server.ServerAdministration.supportsPublic(instance.release)) {
+                throw new IOException("Public servers require ABNW "
+                    + org.teamzetaverse.launcher.server.ServerAdministration.PUBLIC_MIN_VERSION + " or newer.");
+            }
             command.add("-Dabnw.steam=true");
             command.add("-Dabnw.steam.public=true");
         }
@@ -156,6 +160,8 @@ public final class GameLauncher {
         command.add(game.classpath().stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
         command.add(SERVER_MAIN_CLASS);
         command.add("--nogui");
+        command.add("--port");
+        command.add(Integer.toString(instance.effectiveServerPort()));
 
         ProcessBuilder builder = new ProcessBuilder(command).directory(instance.gameFolder().toFile()).redirectErrorStream(true);
         steamOverlayEnvironment(builder.environment());

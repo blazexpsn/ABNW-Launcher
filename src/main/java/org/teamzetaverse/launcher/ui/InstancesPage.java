@@ -284,7 +284,7 @@ final class InstancesPage {
         }
     }
 
-    private void drawIcon(final Instance instance) {
+    void drawIcon(final Instance instance) {
         PenguinWardrobe wardrobe = this.ui.wardrobe;
         this.ui.loadCosmetics();
         float width = ImGui.getContentRegionAvailX();
@@ -420,7 +420,7 @@ final class InstancesPage {
         }
     }
 
-    private int tabs(final String[] labels, final int selected) {
+    int tabs(final String[] labels, final int selected) {
         ImDrawList dl = ImGui.getWindowDrawList();
         float x0 = ImGui.getCursorScreenPosX();
         float y0 = ImGui.getCursorScreenPosY();

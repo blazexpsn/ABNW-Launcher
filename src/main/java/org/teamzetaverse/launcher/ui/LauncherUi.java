@@ -87,7 +87,7 @@ public final class LauncherUi {
         return thread;
     });
     private final HomePage home;
-    private final InstancesPage instancesPage;
+    final InstancesPage instancesPage;
     private final ServersPage serversPage;
     private final NewsPage newsPage;
     private final CosmeticsPage cosmeticsPage;
@@ -663,6 +663,7 @@ public final class LauncherUi {
     }
 
     void startServer(final Instance instance) {
+        if (this.running.containsKey(instance.id) || this.installState(instance) == InstallState.BUSY) return;
         this.tasks.submit("Starting " + instance.name, progress -> {
             var installed = this.installer.install(instance.release, this.instances.readLibraries(instance), progress);
             progress.checkCancelled();
@@ -706,7 +707,11 @@ public final class LauncherUi {
     void stop(final Instance instance) {
         GameProcess process = this.running.get(instance.id);
         if (process != null) {
-            process.kill();
+            if (instance.isServer()) {
+                try { process.sendCommand("stop"); } catch (IOException e) { this.fail(e); }
+            } else {
+                process.kill();
+            }
         }
     }
 
@@ -738,10 +743,15 @@ public final class LauncherUi {
     }
 
     void switchRelease(final Instance instance, final Release release) {
+        if (this.running.containsKey(instance.id) || this.installState(instance) == InstallState.BUSY) return;
         this.tasks.submit("Switching " + instance.name, progress -> {
             progress.status("Fetching " + release.displayName() + "…");
             ReleaseService.Resolved resolved = this.releases.resolve(release);
             this.instances.setRelease(instance, resolved);
+            if (instance.isServer() && !org.teamzetaverse.launcher.server.ServerAdministration.supportsPublic(instance.release)) {
+                instance.publicServer = false;
+                this.instances.save(instance);
+            }
             return Boolean.TRUE;
         }, ok -> {
             this.installCache.clear();
@@ -799,8 +809,13 @@ public final class LauncherUi {
             ReleaseService.Resolved resolved = this.releases.resolve(described.release);
             return InstanceArchive.importArchive(archive, this.instances, resolved, progress);
         }, imported -> {
-            this.select(imported);
-            this.navigate(Page.INSTANCES);
+            if (imported.isServer()) {
+                this.serversPage.select(imported);
+                this.navigate(Page.SERVERS);
+            } else {
+                this.select(imported);
+                this.navigate(Page.INSTANCES);
+            }
             this.prepare(imported);
         }, this::fail);
     }

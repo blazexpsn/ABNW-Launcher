@@ -15,12 +15,14 @@ public final class Instance {
     public static final String KIND_SERVER = "server";
     public static final String SERVER_PROPERTIES = "server.properties";
     public static final String EULA_FILE = "eula.txt";
+    public static final int DEFAULT_SERVER_PORT = 25565;
 
     public int formatVersion = 2;
     public String id = "";
     public String name = "";
     public String kind = KIND_CLIENT;
     public boolean publicServer;
+    public int serverPort;
     public Release release = new Release();
     public String renderer = "auto";
     public int memoryMb;
@@ -51,6 +53,10 @@ public final class Instance {
 
     public boolean isServer() {
         return KIND_SERVER.equals(this.kind);
+    }
+
+    public int effectiveServerPort() {
+        return this.serverPort > 0 ? this.serverPort : DEFAULT_SERVER_PORT;
     }
 
     public Path gameFolder() {
