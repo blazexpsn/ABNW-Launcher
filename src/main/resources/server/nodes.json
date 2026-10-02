@@ -418,6 +418,10 @@
       "description": "Use /xp"
     },
     {
+      "node": "minecraft.minigame_builder",
+      "description": "Enter Minigame Builder, and leave a minigame mode, in a minigame world"
+    },
+    {
       "node": "minecraft.obsidian_chest.bypass",
       "description": "Bypass Obsidian Chest locks (requires an explicit permission grant)"
     },

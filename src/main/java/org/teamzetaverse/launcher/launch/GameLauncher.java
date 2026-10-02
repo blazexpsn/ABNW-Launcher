@@ -136,9 +136,6 @@ public final class GameLauncher {
         command.add("-Xms" + Math.min(512, memory) + "m");
         command.add("-Xmx" + memory + "m");
 
-        if (game.loggingArgument() != null) {
-            command.add(game.loggingArgument());
-        }
         if (instance.extraJvmArgs != null && !instance.extraJvmArgs.isBlank()) {
             try {
                 command.addAll(org.teamzetaverse.launcher.util.CommandLine.split(instance.extraJvmArgs));

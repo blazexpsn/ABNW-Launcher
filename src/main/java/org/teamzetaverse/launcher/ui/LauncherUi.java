@@ -77,6 +77,7 @@ public final class LauncherUi {
     final DiscordPresence discord;
     final List<String> errors = new ArrayList<>();
     final Dialogs dialogs;
+    private final SteamMultiplayerNotice steamNotice = new SteamMultiplayerNotice();
     final org.teamzetaverse.launcher.cosmetics.CosmeticsClient cosmetics;
 
     private final FeedService feedService;
@@ -188,7 +189,10 @@ public final class LauncherUi {
             float edge = Pixel.unit();
             front.addRectFilled(vx, vy + bar, vx + edge, vy + vh - status, u32(Theme.BORDER));
             front.addRectFilled(vx + vw - edge, vy + bar, vx + vw, vy + vh - status, u32(Theme.BORDER));
-            this.dialogs.draw();
+            this.steamNotice.draw(this.config);
+            if (this.steamNotice.isAcknowledged(this.config)) {
+                this.dialogs.draw();
+            }
         }
         ImGui.end();
 

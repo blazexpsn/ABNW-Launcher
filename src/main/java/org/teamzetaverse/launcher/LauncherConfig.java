@@ -15,6 +15,7 @@ public final class LauncherConfig {
     public String selectedInstance = "";
     public float uiScale = 1.0f;
     public boolean discordPresence = true;
+    public boolean hideSteamMultiplayerNotice = false;
     public String lastSeenGameRelease = "";
     public List<String> dismissedAnnouncements = new ArrayList<>();
 
