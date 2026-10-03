@@ -148,6 +148,21 @@ public final class CosmeticsClient {
     public String startCheckout(final String token, final String cosmeticId) throws IOException {
         JsonObject request = new JsonObject();
         request.addProperty("cosmeticId", cosmeticId);
+        return this.checkoutUrl(token, request);
+    }
+
+    public String startCheckout(final String token, final List<String> cosmeticIds, final long totalCents, final String currency) throws IOException {
+        if (cosmeticIds.isEmpty() || cosmeticIds.size() > CosmeticBasket.MAX_ITEMS) throw new IOException("The cosmetics basket is empty or too large.");
+        JsonObject request = new JsonObject();
+        JsonArray ids = new JsonArray();
+        cosmeticIds.forEach(ids::add);
+        request.add("cosmeticIds", ids);
+        request.addProperty("expectedTotalCents", totalCents);
+        request.addProperty("expectedCurrency", currency);
+        return this.checkoutUrl(token, request);
+    }
+
+    private String checkoutUrl(final String token, final JsonObject request) throws IOException {
         JsonObject body = this.call("POST", "/v1/store/checkout", request, this.session(token));
         String url = Json.string(body, "url");
         if (url == null || !url.startsWith("https://checkout.stripe.com/")) {

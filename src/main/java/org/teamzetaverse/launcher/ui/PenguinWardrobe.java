@@ -38,14 +38,18 @@ final class PenguinWardrobe {
                 return "";
             }
             var purchase = this.cosmetic.unlock().purchase().get();
-            String amount = String.format(Locale.ROOT, "%d.%02d", purchase.priceCents() / 100, purchase.priceCents() % 100);
-            return switch (purchase.currency()) {
-                case "usd" -> "$" + amount;
-                case "gbp" -> "£" + amount;
-                case "eur" -> "€" + amount;
-                default -> amount + " " + purchase.currency().toUpperCase(Locale.ROOT);
-            };
+            return formatPrice(purchase.priceCents(), purchase.currency());
         }
+    }
+
+    static String formatPrice(final long cents, final String currency) {
+        String amount = String.format(Locale.ROOT, "%d.%02d", cents / 100, cents % 100);
+        return switch (currency) {
+            case "usd" -> "$" + amount;
+            case "gbp" -> "£" + amount;
+            case "eur" -> "€" + amount;
+            default -> amount + " " + currency.toUpperCase(Locale.ROOT);
+        };
     }
 
     private static final List<Accessory> BUILT_IN = List.of(

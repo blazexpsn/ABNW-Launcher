@@ -95,6 +95,690 @@
           "size": 133
         }
       }
+    },
+    {
+      "id": "abnw:penguin_wizard_hat",
+      "name": "Starfall wizard",
+      "description": "A midnight hat for a penguin with questionable spells.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 249,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/wizard_hat.png",
+          "sha256": "a1fe15717319bf9387bd63b5113e47dbd44bb7175fa141f4b3597355781d5900",
+          "size": 182
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_pirate_hat",
+      "name": "Captain Flipper",
+      "description": "A tricorn with a tiny skull. The treasure is probably fish.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 249,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/pirate_hat.png",
+          "sha256": "35b5a2fc89aed329aa64a124ae3196ef074cd3f011dc773bd6279602b986f539",
+          "size": 186
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_captain_cap",
+      "name": "Ocean captain",
+      "description": "A crisp cap for the captain of the icebreaker.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/captain_cap.png",
+          "sha256": "5180bca16f26fbec8bff8fd1c755020d302ccd943db256e404a574a6be0f570d",
+          "size": 179
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_hard_hat",
+      "name": "Little builder",
+      "description": "Safety first, even when the scaffolding is made of snow.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/hard_hat.png",
+          "sha256": "cdb76818e8df508910f4995781407c0939873ca5c6cb9ff688b92835dba9d3b5",
+          "size": 203
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_explorer_hat",
+      "name": "Trail explorer",
+      "description": "A leather field hat for the long way home.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/explorer_hat.png",
+          "sha256": "4a8f9a6dd92d533e12f8e10fb08ede569440ea163ca31884e9824dce6cc9483b",
+          "size": 174
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_chef_hat",
+      "name": "Snow chef",
+      "description": "The kitchen's smallest chef has a very tall hat.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/chef_hat.png",
+          "sha256": "2db4b1693d7380eb873d8777696f6226772d9ac728a753363df898bf49bc0acd",
+          "size": 179
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_flower_crown",
+      "name": "Meadow crown",
+      "description": "Wildflowers woven into a little ring of green.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/flower_crown.png",
+          "sha256": "c0a729674e0ffe8e8aa284cd7351b844c935cb030411a2954704eac110434201",
+          "size": 168
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_mushroom_hat",
+      "name": "Toadstool topper",
+      "description": "A spotted woodland cap with room for daydreams.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 249,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/mushroom_hat.png",
+          "sha256": "376cc1224da1d9fc124baf5a6414f57a0007984fb91961ab1fe97a2de642f69e",
+          "size": 209
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_astronaut_helmet",
+      "name": "Moonwalker",
+      "description": "A clear visor and a silver rim for zero-gravity waddles.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 299,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/astronaut_helmet.png",
+          "sha256": "fbd8bbb028b8546dce64e96698da7cc9e2dab38dc45889f37f017fd35857c63c",
+          "size": 209
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_studio_headphones",
+      "name": "Studio penguin",
+      "description": "Cushioned ear cups for the soundtrack to your next adventure.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 249,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/studio_headphones.png",
+          "sha256": "ee510984c659db5a6157c729deedab3e5aa88013023e8a88b41ba97d4acce172",
+          "size": 178
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_antlers",
+      "name": "Forest antlers",
+      "description": "Two branching antlers. Mind the doorways.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 249,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/antlers.png",
+          "sha256": "711b95d8aab5c463860a75c3e42b85914dabd23c7e596f80b3a5aea2a82766bf",
+          "size": 200
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_halo",
+      "name": "Almost angelic",
+      "description": "A golden halo. The penguin's innocence is unconfirmed.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/halo.png",
+          "sha256": "9fe31b8b6dd5a5be7013fc9811dbe6e9b1c1ad1462c7ee24c260ed28d1292e43",
+          "size": 153
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_aviator_cap",
+      "name": "Cloud aviator",
+      "description": "A fleece-lined flying cap for a bird determined to fly.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 249,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/aviator_cap.png",
+          "sha256": "ea74f209b358bb1384fb64b2a61addfd14ab0ca0313e046534fdb3c1d15f720f",
+          "size": 217
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_ninja_headband",
+      "name": "Midnight ninja",
+      "description": "A red headband for stealthy, slightly squeaky footsteps.",
+      "type": "penguin_head",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/ninja_headband.png",
+          "sha256": "cc00c88f440fba104ecfe7bb3a538dee26bae8eefd8f56c1fed3deaa64c1d34a",
+          "size": 170
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_round_glasses",
+      "name": "Bookworm rounds",
+      "description": "Round gold frames for the penguin with a reading list.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/round_glasses.png",
+          "sha256": "1e4d4d18dc1c0b95f998fa15e7a78c691fdeb20c33031da3f5c53baddff3d217",
+          "size": 126
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_ski_goggles",
+      "name": "Glacier goggles",
+      "description": "A wide blue lens for the brightest snow days.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/ski_goggles.png",
+          "sha256": "7233514c4bae331000c24428b118ecdc940664e7bb9fbd9e509bcae986461180",
+          "size": 171
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_eye_patch",
+      "name": "First mate patch",
+      "description": "An eye patch for a penguin with a mysterious past.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/eye_patch.png",
+          "sha256": "f5d23d19b92111211387afc621fc1a87a4419133936173afc6762cc5a4147896",
+          "size": 143
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_star_glasses",
+      "name": "Stargazer shades",
+      "description": "Golden stars for a very small celebrity.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/star_glasses.png",
+          "sha256": "f8e7a941edc1c8d9da27773516232059c59cd784e1462e2b39357ee9543783ef",
+          "size": 133
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_cyber_visor",
+      "name": "Neon horizon",
+      "description": "A magenta visor with a bright scanline.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/cyber_visor.png",
+          "sha256": "6abb22fcac8c901cac5d8f659cdf32c28ef4b6beaab44ceb5def84ca29a9773c",
+          "size": 158
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_reading_glasses",
+      "name": "Half-moon specs",
+      "description": "Low-sitting frames for serious fish-related paperwork.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/reading_glasses.png",
+          "sha256": "36d951fc6a6f295aea3a68e73aa202b6eba63fadd64fd7a9ec2c733c86ad58ee",
+          "size": 129
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_snorkel_mask",
+      "name": "Reef snorkeller",
+      "description": "A sea-green diving mask with its own little snorkel.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/snorkel_mask.png",
+          "sha256": "fba33a44c93a7fbdd4ed46cc2b1a683dd8bbad6276dbd351fe2889fbf00ff628",
+          "size": 180
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_masquerade_mask",
+      "name": "Velvet masquerade",
+      "description": "Purple velvet and a feather for the midnight ball.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/masquerade_mask.png",
+          "sha256": "8c35dc560bc2375bb3ab189491bbbfce60e177e51ab228775a223b56bd051a4d",
+          "size": 165
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_safety_goggles",
+      "name": "Workshop goggles",
+      "description": "Copper-rimmed lenses for delicate inventions.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/safety_goggles.png",
+          "sha256": "6029ffe89fd1129cc669f12bc37fdc93c5b9d94e07219d2a971ab84eb63ae436",
+          "size": 150
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_pixel_shades",
+      "name": "Pixel legend",
+      "description": "A stepped pair of shades for an unbothered penguin.",
+      "type": "penguin_face",
+      "unlock": {
+        "purchase": {
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/pixel_shades.png",
+          "sha256": "b48c5843510ac0b1557c6239f0630f91c4ad0e03a6e47899391488fed92814d3",
+          "size": 162
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_sailor_collar",
+      "name": "Harbour sailor",
+      "description": "A navy collar with a neat white stripe.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/sailor_collar.png",
+          "sha256": "71a4aefa2c7f9b614d5fb6d9f9c14281c9b19fdbc0c57bd352992bcdca0746e3",
+          "size": 180
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_royal_capelet",
+      "name": "Royal capelet",
+      "description": "Velvet shoulders and an ermine trim, sized for royalty.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 249,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/royal_capelet.png",
+          "sha256": "7a5a48fe5447a5cae7f68fa7a66351c62f9ba75450ccd61867ec2b3fab925a45",
+          "size": 189
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_emerald_pendant",
+      "name": "Deepwood emerald",
+      "description": "A square-cut forest gem on a fine gold chain.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/emerald_pendant.png",
+          "sha256": "f8a9a333f2029dfca61e50fd7aea3d6b4edaa8b63b5c4d2a1b3ec7c252c1fbd2",
+          "size": 144
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_ruby_pendant",
+      "name": "Ember heart",
+      "description": "A heart-shaped ember-red gem for a warm-hearted penguin.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/ruby_pendant.png",
+          "sha256": "9f88cc87b2c00198c60ba819dee7995c29100fb4ca36c5c40a40762c21b9c9ca",
+          "size": 167
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_comet_pendant",
+      "name": "Comet charm",
+      "description": "A silver star and a little tail of starlight.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/comet_pendant.png",
+          "sha256": "bcfaebdc5e9fe1ba0e755630f1368394d1e3f8d6316c0a4211d90cadb77de0f8",
+          "size": 145
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_trail_bandana",
+      "name": "Trail bandana",
+      "description": "A green knot and a triangular kerchief for the campfire crowd.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/trail_bandana.png",
+          "sha256": "06c39a2f4c964bc81ddc6743307eaa89a1546ab896d2d50c5b75a64ab3038a04",
+          "size": 175
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_silk_tie",
+      "name": "Boardroom tie",
+      "description": "A blue silk tie for very important launcher business.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/silk_tie.png",
+          "sha256": "c5c422bb8a0b63565116e3e1c4c3ab2baa52d28b3d5c89f7964ed70ab1a761e4",
+          "size": 197
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_explorer_medal",
+      "name": "Brave explorer",
+      "description": "A ribbon and gold medal for going one block further.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/explorer_medal.png",
+          "sha256": "aec3450426fd361933489ea068e0d666cb3b9c25deb50942e7353b33fbb93aea",
+          "size": 177
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_winter_wrap",
+      "name": "Polar knit",
+      "description": "A thick cream scarf, tucked in for a long winter.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/winter_wrap.png",
+          "sha256": "c2f16349279756a2e1bc5f5ed981c232d596bd451f60c1f44d639d59c406d889",
+          "size": 177
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_bell_collar",
+      "name": "Jingle collar",
+      "description": "A festive red collar with a tiny golden bell.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/bell_collar.png",
+          "sha256": "24204fb34669f11bccdef02a96229bbecc0d8921c8b6e0b91bd959ab4334a9af",
+          "size": 184
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_ribbon_rosette",
+      "name": "Prize penguin",
+      "description": "A blue rosette for the best waddle in the room.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 149,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/ribbon_rosette.png",
+          "sha256": "db4f6936d7fd7a5fe67c8ca62de2efd240bfe51e5a839d136540ff8ecb456316",
+          "size": 146
+        }
+      }
+    },
+    {
+      "id": "abnw:penguin_pearl_necklace",
+      "name": "Moonlit pearls",
+      "description": "A short string of silver-white pearls for special evenings.",
+      "type": "penguin_neck",
+      "unlock": {
+        "purchase": {
+          "priceCents": 199,
+          "currency": "gbp"
+        }
+      },
+      "assets": {
+        "texture": {
+          "path": "penguin/pearl_necklace.png",
+          "sha256": "a31427d5517d3ddec3973b6489888d3c982eb6b831e30cd49148d6afc5016ab8",
+          "size": 128
+        }
+      }
     }
   ]
 }

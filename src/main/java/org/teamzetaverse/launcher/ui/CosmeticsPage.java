@@ -5,7 +5,10 @@ import static org.teamzetaverse.launcher.ui.Theme.u32;
 
 import imgui.ImDrawList;
 import imgui.ImGui;
+import imgui.flag.ImGuiChildFlags;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,6 +19,7 @@ import org.teamzetaverse.cosmetics.api.InvalidRegistryException;
 import org.teamzetaverse.launcher.BuildInfo;
 import org.teamzetaverse.launcher.auth.Account;
 import org.teamzetaverse.launcher.cosmetics.CosmeticsClient;
+import org.teamzetaverse.launcher.cosmetics.CosmeticBasket;
 import org.teamzetaverse.launcher.task.Progress;
 
 final class CosmeticsPage {
@@ -40,6 +44,10 @@ final class CosmeticsPage {
     private String linkUrl;
     private Progress unlinking;
     private Progress purchasing;
+    private CosmeticBasket basket;
+    private String basketFor;
+    private String checkoutUrl;
+    private String checkoutAccount;
     private long lastDrawMillis;
 
     CosmeticsPage(final LauncherUi ui) {
@@ -63,7 +71,7 @@ final class CosmeticsPage {
         Widgets.textWrapped(Fonts.body, Theme.MUTED, "Your ABNW cosmetic identity works with any Minecraft profile, including offline profiles.");
         for (var identity : identities.all()) {
             if (Widgets.secondary("identity-" + identity.id(), identity.label() + " · " + identity.id().substring(5, 13),
-                Icons.Icon.USER, !identity.id().equals(identities.selected()))) {
+                Icons.Icon.USER, this.purchasing == null && !identity.id().equals(identities.selected()))) {
                 try { identities.select(identity.id()); } catch (IOException e) { this.error = message(e); }
             }
         }
@@ -180,12 +188,14 @@ final class CosmeticsPage {
 
     private void drawWardrobe(final float width, final String account) {
         PenguinWardrobe wardrobe = this.ui.wardrobe;
+        this.bindBasket(account);
         if (Widgets.beginCard("cos-wardrobe", width, 0, Theme.SURFACE, px(26), px(22))) {
             Widgets.cardTitle(Icons.Icon.COSMETICS, "Penguin wardrobe");
             Widgets.textWrapped(Fonts.body, Theme.MUTED, "Dress up the penguin on your instance icons. The top hat, party hat, beanie, sunglasses, "
                 + "monocle, scarves and bow tie are free for everyone; pick them on an instance's Icon tab.");
             ImGui.dummy(0, px(8));
             java.util.List<PenguinWardrobe.Accessory> items = wardrobe.store();
+            this.drawBasket(items, account);
             if (items.isEmpty()) {
                 Widgets.mascotMessage(Icons.Icon.SOON, wardrobe.storeLoading() ? "Opening the wardrobe…"
                     : "More accessories are on their way to the store.", Theme.MUTED);
@@ -231,8 +241,12 @@ final class CosmeticsPage {
             Widgets.pill("Owned", Theme.OK, Theme.OK, 0.13f, Icons.Icon.CHECK);
         } else {
             boolean busy = this.purchasing != null;
-            if (Widgets.primary("buy-" + item.id(), busy ? "Waiting…" : "Buy " + item.price(), Icons.Icon.HEART, 0, px(38), !busy)) {
-                this.startPurchase(account, item);
+            boolean inBasket = this.basket != null && this.basket.contains(item.id());
+            boolean forSale = item.cosmetic() != null && item.cosmetic().unlock().purchasable();
+            if (Widgets.primary("buy-" + item.id(), inBasket ? "In basket" : forSale ? "Add " + item.price() : "Not for sale",
+                Icons.Icon.PLUS, 0, px(38), !busy && !inBasket && forSale && this.basket != null)) {
+                try { this.basket.add(item.cosmetic(), catalogue(this.ui.wardrobe.store())); }
+                catch (IOException e) { this.error = message(e); }
             }
             Widgets.drawText(dl, Fonts.small, tx, y + h - px(26), u32(Theme.MUTED), "Including tax");
         }
@@ -241,13 +255,106 @@ final class CosmeticsPage {
         ImGui.dummy(width, h);
     }
 
-    private void startPurchase(final String account, final PenguinWardrobe.Accessory item) {
+    private static List<Cosmetic> catalogue(final List<PenguinWardrobe.Accessory> items) {
+        return items.stream().map(PenguinWardrobe.Accessory::cosmetic).filter(java.util.Objects::nonNull).toList();
+    }
+
+    private void bindBasket(final String account) {
+        if (account.equals(this.basketFor)) return;
+        this.basketFor = account;
+        this.basket = null;
+        try { this.basket = new CosmeticBasket(this.ui.cosmetics.identityDirectory(account).resolve("basket.json")); }
+        catch (IOException e) { this.error = message(e); }
+    }
+
+    private void drawBasket(final List<PenguinWardrobe.Accessory> items, final String account) {
+        ImGui.separator();
+        Widgets.text(Fonts.heading, Theme.TEXT, "Your basket");
+        if (this.basket == null) {
+            Widgets.textWrapped(Fonts.body, Theme.ERROR, "Couldn't open your saved basket. " + this.error);
+            if (Widgets.secondary("basket-reset", "Reset basket", Icons.Icon.REFRESH, this.purchasing == null)) {
+                try {
+                    var empty = new com.google.gson.JsonObject();
+                    empty.add("cosmeticIds", new com.google.gson.JsonArray());
+                    org.teamzetaverse.launcher.util.Json.write(this.ui.cosmetics.identityDirectory(account).resolve("basket.json"), empty);
+                    this.basketFor = null;
+                    this.bindBasket(account);
+                    this.error = null;
+                } catch (IOException e) { this.error = message(e); }
+            }
+            return;
+        }
+        try { this.basket.removeAll(this.ui.unlockedCosmetics()); }
+        catch (IOException e) { this.error = message(e); }
+        Map<String, PenguinWardrobe.Accessory> available = items.stream().collect(Collectors.toMap(PenguinWardrobe.Accessory::id, item -> item));
+        List<String> ids = this.basket.ids();
+        boolean busy = this.purchasing != null;
+        if (ids.isEmpty()) {
+            Widgets.textWrapped(Fonts.body, Theme.MUTED, "Add accessories below, then buy them together in one Stripe checkout. Your basket is saved to this cosmetic identity.");
+        } else {
+            if (ImGui.beginChild("cos-basket-items", 0, Math.min(px(180), ids.size() * px(42)), ImGuiChildFlags.None, 0)) {
+                for (String id : ids) {
+                    PenguinWardrobe.Accessory item = available.get(id);
+                    float x = ImGui.getCursorScreenPosX(), y = ImGui.getCursorScreenPosY();
+                    float rowWidth = ImGui.getContentRegionAvailX();
+                    if (item != null) PenguinWardrobe.drawBust(ImGui.getWindowDrawList(), x, y, px(32), List.of(item.texture()));
+                    ImGui.setCursorScreenPos(x + px(42), y + px(8));
+                    Widgets.text(Fonts.body, Theme.TEXT, Widgets.ellipsize(Fonts.body, item == null ? id : item.name(), rowWidth - px(250)));
+                    ImGui.setCursorScreenPos(x + rowWidth - px(200), y + px(8));
+                    Widgets.text(Fonts.body, Theme.MUTED, item == null || item.price().isEmpty() ? "Unavailable" : item.price());
+                    ImGui.setCursorScreenPos(x + rowWidth - px(104), y);
+                    if (Widgets.button("basket-remove-" + id, "Remove", Icons.Icon.CLOSE, Widgets.Variant.SECONDARY, px(104), px(38), !busy)) {
+                        try { this.basket.removeAll(List.of(id)); } catch (IOException e) { this.error = message(e); }
+                    }
+                    ImGui.setCursorScreenPos(x, y + px(42));
+                    ImGui.dummy(0, 0);
+                }
+            }
+            ImGui.endChild();
+            CosmeticBasket.Contents selection = this.basket.contents(catalogue(items));
+            if (selection.canCheckout()) {
+                Widgets.text(Fonts.label, Theme.TEXT, "Total: " + PenguinWardrobe.formatPrice(selection.totalCents(), selection.currency()) + " including tax");
+            } else {
+                Widgets.textWrapped(Fonts.body, Theme.SUN, selection.mixedCurrencies()
+                    ? "Choose items in one currency before checkout."
+                    : "Some basket items are unavailable. Wait for the store to load, or remove those items before checkout.");
+            }
+            if (Widgets.primary("basket-checkout", busy ? "Waiting for payment…" : "Checkout " + selection.items().size() + " items",
+                Icons.Icon.HEART, 0, px(40), !busy && selection.canCheckout())) {
+                this.startPurchase(account, selection);
+            }
+            ImGui.sameLine();
+            if (Widgets.secondary("basket-clear", "Clear basket", Icons.Icon.TRASH, !busy)) {
+                try { this.basket.clear(); } catch (IOException e) { this.error = message(e); }
+            }
+        }
+        if (busy && !account.equals(this.checkoutAccount)) {
+            Widgets.textWrapped(Fonts.body, Theme.MUTED, "Checkout is in progress for another cosmetic identity.");
+        } else if (busy && this.checkoutUrl != null) {
+            if (Widgets.secondary("basket-reopen", "Reopen Stripe checkout", Icons.Icon.EXTERNAL)) Desktop.browse(this.checkoutUrl);
+        }
+        if (busy) {
+            if (Widgets.secondary("basket-stop-waiting", "Stop waiting", Icons.Icon.CLOSE)) this.purchasing.cancel();
+            Widgets.textWrapped(Fonts.small, Theme.MUTED, "Stopping keeps your basket and stops checking here. It does not cancel an open Stripe checkout or refund a payment.");
+        }
+        Widgets.textWrapped(Fonts.small, Theme.MUTED, "Optional cosmetics help support ABNW development. Stripe confirms the final price and tax breakdown before payment.");
+        if (this.error != null) Widgets.textWrapped(Fonts.body, Theme.ERROR, this.error);
+        ImGui.dummy(0, px(8));
+        ImGui.separator();
+        ImGui.dummy(0, px(8));
+    }
+
+    private void startPurchase(final String account, final CosmeticBasket.Contents selection) {
         this.error = null;
-        this.purchasing = this.ui.tasks.submit("Buying " + item.name(), progress -> {
+        this.checkoutUrl = null;
+        this.checkoutAccount = account;
+        CosmeticBasket purchasedBasket = this.basket;
+        List<String> purchasedIds = selection.ids();
+        this.purchasing = this.ui.tasks.submit("Buying " + purchasedIds.size() + " cosmetics", progress -> {
             progress.status("Opening checkout…");
-            String url = this.withSession(account, progress, token -> this.ui.cosmetics.startCheckout(token, item.id()));
-            this.ui.tasks.onUi(() -> Desktop.browse(url));
-            progress.status("Finish paying in your browser. " + item.name() + " unlocks as soon as it goes through.");
+            String url = this.withSession(account, progress, token -> this.ui.cosmetics.startCheckout(token, purchasedIds, selection.totalCents(), selection.currency()));
+            this.ui.tasks.onUi(() -> { this.checkoutUrl = url; Desktop.browse(url); });
+            progress.status("Finish paying in your browser. All " + purchasedIds.size() + " cosmetics unlock when Stripe confirms payment.");
             long deadline = System.currentTimeMillis() + 20L * 60 * 1000;
             while (System.currentTimeMillis() < deadline) {
                 for (long waited = 0; waited < POLL_MILLIS; waited += 250) {
@@ -255,16 +362,21 @@ final class CosmeticsPage {
                     Thread.sleep(250);
                 }
                 CosmeticsClient.Status current = this.withSession(account, progress, token -> this.ui.cosmetics.status(token));
-                if (current.unlocked().contains(item.id())) {
+                if (current.unlocked().containsAll(purchasedIds)) {
                     return current;
                 }
             }
-            throw new IOException("Checkout timed out. If you paid, " + item.name() + " will appear the next time the launcher checks.");
+            throw new IOException("Checkout timed out. If you paid, your cosmetics will appear the next time the launcher checks. Your basket has been kept.");
         }, bought -> {
+            try { purchasedBasket.removeAll(purchasedIds); } catch (IOException e) { this.error = message(e); }
             if (account.equals(this.loadedFor)) {
                 this.status = bought;
             }
-        }, failure -> this.error = message(failure));
+        }, failure -> {
+            this.error = message(failure);
+            this.ui.wardrobe.refreshFromServer();
+            if (account.equals(this.loadedFor)) this.nextSync = 0;
+        });
     }
 
     java.util.Set<String> unlocked() {
@@ -337,6 +449,8 @@ final class CosmeticsPage {
         }
         if (this.purchasing != null && !this.ui.tasks.running().contains(this.purchasing)) {
             this.purchasing = null;
+            this.checkoutUrl = null;
+            this.checkoutAccount = null;
         }
     }
 
